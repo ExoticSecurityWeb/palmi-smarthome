@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Contrôle cloud de la strip LED via API Tuya + bot Telegram - on/off, luminosité, couleur",
   "author": "ExoticSecurityWeb",
+  "license": "MIT",
   "main": "palmi-smarthome.js",
   "scripts": {
     "start": "node palmi-smarthome.js"
