@@ -2,22 +2,97 @@ const express = require("express");
 const crypto = require("crypto");
 const axios = require("axios");
 const TelegramBot = require("node-telegram-bot-api");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
 app.use(express.json());
 
 const ACCESS_ID = process.env.TUYA_ACCESS_ID;
 const ACCESS_SECRET = process.env.TUYA_ACCESS_SECRET;
-const API_BASE = process.env.TUYA_API_BASE || "https://openapi.tuyaeu.com";
-const DEVICE_ID = process.env.TUYA_DEVICE_ID || "bf7d9913dd42da28899bnq";
+const API_BASE =
+  process.env.TUYA_API_BASE || "https://openapi.tuyaeu.com";
+const DEVICE_ID =
+  process.env.TUYA_DEVICE_ID || "bf7d9913dd42da28899bnq";
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const ALLOWED_CHAT_IDS = (process.env.TELEGRAM_ALLOWED_CHAT_IDS || "")
+
+const ALLOWED_CHAT_IDS = (
+  process.env.TELEGRAM_ALLOWED_CHAT_IDS || ""
+)
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
 
-// === Signature Tuya (HMAC-SHA256) ===
+// ============================================================
+// AUTOMATISATIONS PALMI
+// ============================================================
+
+const AUTOMATION_FILE = path.join(
+  __dirname,
+  "automations.json"
+);
+
+const AUTOMATION_TIMEZONE = "Europe/Paris";
+
+let automations = {
+  night: false
+};
+
+try {
+  if (fs.existsSync(AUTOMATION_FILE)) {
+    const saved = JSON.parse(
+      fs.readFileSync(AUTOMATION_FILE, "utf8")
+    );
+
+    automations = {
+      ...automations,
+      ...saved
+    };
+  }
+} catch (err) {
+  console.error(
+    "❌ Erreur lecture automations.json :",
+    err.message
+  );
+}
+
+function saveAutomations() {
+  try {
+    fs.writeFileSync(
+      AUTOMATION_FILE,
+      JSON.stringify(automations, null, 2),
+      "utf8"
+    );
+  } catch (err) {
+    console.error(
+      "❌ Erreur sauvegarde automatisations :",
+      err.message
+    );
+  }
+}
+
+function getParisTime() {
+  return new Intl.DateTimeFormat("fr-FR", {
+    timeZone: AUTOMATION_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).format(new Date());
+}
+
+function getParisDate() {
+  return new Intl.DateTimeFormat("fr-CA", {
+    timeZone: AUTOMATION_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date());
+}
+
+// ============================================================
+// SIGNATURE TUYA
+// ============================================================
 
 function sha256(str) {
   return crypto
@@ -34,127 +109,220 @@ function hmacSha256(str, secret) {
     .toUpperCase();
 }
 
-function buildStringToSign(method, body, headersStr, url) {
+function buildStringToSign(
+  method,
+  body,
+  headersStr,
+  url
+) {
   const contentSha256 = sha256(body || "");
+
   return `${method}\n${contentSha256}\n${headersStr}\n${url}`;
 }
 
-// === Authentification Tuya ===
+// ============================================================
+// AUTHENTIFICATION TUYA
+// ============================================================
 
 async function getToken() {
   const t = Date.now().toString();
+
   const method = "GET";
-  const url = "/v1.0/token?grant_type=1";
 
-  const stringToSign = buildStringToSign(
-    method,
-    "",
-    "",
-    url
+  const url =
+    "/v1.0/token?grant_type=1";
+
+  const stringToSign =
+    buildStringToSign(
+      method,
+      "",
+      "",
+      url
+    );
+
+  const strToSign =
+    `${ACCESS_ID}${t}${stringToSign}`;
+
+  const sign =
+    hmacSha256(
+      strToSign,
+      ACCESS_SECRET
+    );
+
+  const res = await axios.get(
+    `${API_BASE}${url}`,
+    {
+      headers: {
+        client_id: ACCESS_ID,
+        sign,
+        t,
+        sign_method: "HMAC-SHA256"
+      }
+    }
   );
-
-  const strToSign = `${ACCESS_ID}${t}${stringToSign}`;
-  const sign = hmacSha256(strToSign, ACCESS_SECRET);
-
-  const res = await axios.get(`${API_BASE}${url}`, {
-    headers: {
-      client_id: ACCESS_ID,
-      sign,
-      t,
-      sign_method: "HMAC-SHA256",
-    },
-  });
 
   if (!res.data.success) {
     throw new Error(
-      `Erreur token Tuya: ${JSON.stringify(res.data)}`
+      `Erreur token Tuya: ${JSON.stringify(
+        res.data
+      )}`
     );
   }
 
   return res.data.result.access_token;
 }
 
-async function signedRequest(method, url, token, body) {
+async function signedRequest(
+  method,
+  url,
+  token,
+  body
+) {
   const t = Date.now().toString();
-  const bodyStr = body ? JSON.stringify(body) : "";
 
-  const stringToSign = buildStringToSign(
-    method,
-    bodyStr,
-    "",
-    url
-  );
+  const bodyStr =
+    body
+      ? JSON.stringify(body)
+      : "";
+
+  const stringToSign =
+    buildStringToSign(
+      method,
+      bodyStr,
+      "",
+      url
+    );
 
   const strToSign =
     `${ACCESS_ID}${token}${t}${stringToSign}`;
 
-  const sign = hmacSha256(
-    strToSign,
-    ACCESS_SECRET
-  );
+  const sign =
+    hmacSha256(
+      strToSign,
+      ACCESS_SECRET
+    );
 
   const res = await axios({
     method,
     url: `${API_BASE}${url}`,
+
     headers: {
       client_id: ACCESS_ID,
       access_token: token,
       sign,
       t,
       sign_method: "HMAC-SHA256",
-      "Content-Type": "application/json",
+      "Content-Type":
+        "application/json"
     },
-    data: body || undefined,
+
+    data:
+      body || undefined
   });
 
   return res.data;
 }
 
-// === Envoi des commandes à la LED ===
+// ============================================================
+// COMMANDES LED
+// ============================================================
 
 async function sendCommands(commands) {
-  const token = await getToken();
+  const token =
+    await getToken();
 
   const url =
     `/v1.0/devices/${DEVICE_ID}/commands`;
 
-  const data = await signedRequest(
+  return signedRequest(
     "POST",
     url,
     token,
-    { commands }
+    {
+      commands
+    }
   );
-
-  return data;
 }
 
-// === Conversion HEX → HSV Tuya ===
+// ============================================================
+// ETAT DE LA LED
+// ============================================================
+
+async function getLightState() {
+  const token =
+    await getToken();
+
+  const url =
+    `/v1.0/devices/${DEVICE_ID}/status`;
+
+  return signedRequest(
+    "GET",
+    url,
+    token
+  );
+}
+
+// ============================================================
+// HEX -> HSV
+// ============================================================
 
 function hexToHsv(hex) {
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
+  const r = parseInt(
+    hex.substring(0, 2),
+    16
+  );
+
+  const g = parseInt(
+    hex.substring(2, 4),
+    16
+  );
+
+  const b = parseInt(
+    hex.substring(4, 6),
+    16
+  );
 
   const rNorm = r / 255;
   const gNorm = g / 255;
   const bNorm = b / 255;
 
-  const max = Math.max(rNorm, gNorm, bNorm);
-  const min = Math.min(rNorm, gNorm, bNorm);
-  const delta = max - min;
+  const max = Math.max(
+    rNorm,
+    gNorm,
+    bNorm
+  );
+
+  const min = Math.min(
+    rNorm,
+    gNorm,
+    bNorm
+  );
+
+  const delta =
+    max - min;
 
   let h = 0;
 
   if (delta !== 0) {
     if (max === rNorm) {
-      h = ((gNorm - bNorm) / delta) % 6;
+      h =
+        ((gNorm - bNorm) / delta) %
+        6;
     } else if (max === gNorm) {
-      h = (bNorm - rNorm) / delta + 2;
+      h =
+        (bNorm - rNorm) /
+          delta +
+        2;
     } else {
-      h = (rNorm - gNorm) / delta + 4;
+      h =
+        (rNorm - gNorm) /
+          delta +
+        4;
     }
 
-    h = Math.round(h * 60);
+    h = Math.round(
+      h * 60
+    );
 
     if (h < 0) {
       h += 360;
@@ -164,21 +332,32 @@ function hexToHsv(hex) {
   const s =
     max === 0
       ? 0
-      : Math.round((delta / max) * 1000);
+      : Math.round(
+          (delta / max) * 1000
+        );
 
-  const v = Math.round(max * 1000);
+  const v =
+    Math.round(
+      max * 1000
+    );
 
-  return { h, s, v };
+  return {
+    h,
+    s,
+    v
+  };
 }
 
-// === Fonctions de contrôle de la lumière ===
+// ============================================================
+// FONCTIONS LUMIERE
+// ============================================================
 
 async function turnOn() {
   return sendCommands([
     {
       code: "switch_led",
-      value: true,
-    },
+      value: true
+    }
   ]);
 }
 
@@ -186,203 +365,245 @@ async function turnOff() {
   return sendCommands([
     {
       code: "switch_led",
-      value: false,
-    },
+      value: false
+    }
   ]);
 }
 
-async function setBrightness(percent) {
-  const tuyaValue = Math.round(
-    (percent / 100) * 1000
-  );
+async function setBrightness(
+  percent
+) {
+  const tuyaValue =
+    Math.round(
+      (percent / 100) * 1000
+    );
 
   return sendCommands([
     {
       code: "bright_value",
-      value: tuyaValue,
-    },
+      value: tuyaValue
+    }
   ]);
 }
 
-// === NOUVEAU : MODE BLANC ===
+async function setWhite(
+  warmth,
+  brightness
+) {
+  const tempValue =
+    Math.round(
+      (warmth / 100) * 1000
+    );
 
-async function setWhite(warmth, brightness) {
-  const tempValue = Math.round(
-    (warmth / 100) * 1000
-  );
-
-  const brightValue = Math.round(
-    (brightness / 100) * 1000
-  );
+  const brightValue =
+    Math.round(
+      (brightness / 100) * 1000
+    );
 
   return sendCommands([
     {
       code: "work_mode",
-      value: "white",
+      value: "white"
     },
     {
       code: "temp_value",
-      value: tempValue,
+      value: tempValue
     },
     {
       code: "bright_value",
-      value: brightValue,
-    },
+      value: brightValue
+    }
   ]);
 }
 
 async function setColor(hex) {
-  const colourData = hexToHsv(hex);
+  const colourData =
+    hexToHsv(hex);
 
   return sendCommands([
     {
       code: "work_mode",
-      value: "colour",
+      value: "colour"
     },
     {
       code: "colour_data",
-      value: colourData,
-    },
+      value: colourData
+    }
   ]);
 }
 
-// === ROUTES HTTP ===
+// ============================================================
+// ROUTES HTTP
+// ============================================================
 
-app.get("/debug-functions", async (req, res) => {
-  try {
-    const token = await getToken();
+app.get(
+  "/debug-functions",
+  async (req, res) => {
+    try {
+      const token =
+        await getToken();
 
-    const data = await signedRequest(
-      "GET",
-      `/v1.0/devices/${DEVICE_ID}/functions`,
-      token
-    );
+      const data =
+        await signedRequest(
+          "GET",
+          `/v1.0/devices/${DEVICE_ID}/functions`,
+          token
+        );
 
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({
-      error: err.message,
-    });
-  }
-});
-
-app.get("/light/on", async (req, res) => {
-  try {
-    res.json(await turnOn());
-  } catch (err) {
-    res.status(500).json({
-      error: err.message,
-    });
-  }
-});
-
-app.get("/light/off", async (req, res) => {
-  try {
-    res.json(await turnOff());
-  } catch (err) {
-    res.status(500).json({
-      error: err.message,
-    });
-  }
-});
-
-app.get("/light/brightness", async (req, res) => {
-  try {
-    const percent = parseInt(
-      req.query.value,
-      10
-    );
-
-    if (
-      isNaN(percent) ||
-      percent < 0 ||
-      percent > 100
-    ) {
-      return res.status(400).json({
-        error:
-          "Paramètre 'value' requis, entre 0 et 100.",
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({
+        error: err.message
       });
     }
-
-    res.json(await setBrightness(percent));
-  } catch (err) {
-    res.status(500).json({
-      error: err.message,
-    });
   }
-});
+);
 
-// === ROUTE HTTP MODE BLANC ===
-
-app.get("/light/white", async (req, res) => {
-  try {
-    const warmth = parseInt(
-      req.query.warmth ?? "50",
-      10
-    );
-
-    const brightness = parseInt(
-      req.query.brightness ?? "100",
-      10
-    );
-
-    if (
-      isNaN(warmth) ||
-      warmth < 0 ||
-      warmth > 100
-    ) {
-      return res.status(400).json({
-        error:
-          "warmth doit être compris entre 0 et 100.",
+app.get(
+  "/light/on",
+  async (req, res) => {
+    try {
+      res.json(
+        await turnOn()
+      );
+    } catch (err) {
+      res.status(500).json({
+        error: err.message
       });
     }
+  }
+);
 
-    if (
-      isNaN(brightness) ||
-      brightness < 0 ||
-      brightness > 100
-    ) {
-      return res.status(400).json({
-        error:
-          "brightness doit être compris entre 0 et 100.",
+app.get(
+  "/light/off",
+  async (req, res) => {
+    try {
+      res.json(
+        await turnOff()
+      );
+    } catch (err) {
+      res.status(500).json({
+        error: err.message
       });
     }
-
-    res.json(
-      await setWhite(
-        warmth,
-        brightness
-      )
-    );
-  } catch (err) {
-    res.status(500).json({
-      error: err.message,
-    });
   }
-});
+);
 
-app.get("/light/color", async (req, res) => {
-  try {
-    const hex = (
-      req.query.hex || ""
-    ).replace("#", "");
+app.get(
+  "/light/brightness",
+  async (req, res) => {
+    try {
+      const percent =
+        parseInt(
+          req.query.value,
+          10
+        );
 
-    if (
-      !/^[0-9a-fA-F]{6}$/.test(hex)
-    ) {
-      return res.status(400).json({
-        error:
-          "Paramètre 'hex' requis, format RRGGBB, ex: ff0000.",
+      if (
+        isNaN(percent) ||
+        percent < 0 ||
+        percent > 100
+      ) {
+        return res.status(400).json({
+          error:
+            "Paramètre 'value' requis, entre 0 et 100."
+        });
+      }
+
+      res.json(
+        await setBrightness(
+          percent
+        )
+      );
+    } catch (err) {
+      res.status(500).json({
+        error: err.message
       });
     }
-
-    res.json(await setColor(hex));
-  } catch (err) {
-    res.status(500).json({
-      error: err.message,
-    });
   }
-});
+);
+
+app.get(
+  "/light/white",
+  async (req, res) => {
+    try {
+      const warmth =
+        parseInt(
+          req.query.warmth ?? "50",
+          10
+        );
+
+      const brightness =
+        parseInt(
+          req.query.brightness ?? "100",
+          10
+        );
+
+      if (
+        isNaN(warmth) ||
+        warmth < 0 ||
+        warmth > 100
+      ) {
+        return res.status(400).json({
+          error:
+            "warmth doit être compris entre 0 et 100."
+        });
+      }
+
+      if (
+        isNaN(brightness) ||
+        brightness < 0 ||
+        brightness > 100
+      ) {
+        return res.status(400).json({
+          error:
+            "brightness doit être compris entre 0 et 100."
+        });
+      }
+
+      res.json(
+        await setWhite(
+          warmth,
+          brightness
+        )
+      );
+    } catch (err) {
+      res.status(500).json({
+        error: err.message
+      });
+    }
+  }
+);
+
+app.get(
+  "/light/color",
+  async (req, res) => {
+    try {
+      const hex = (
+        req.query.hex || ""
+      ).replace("#", "");
+
+      if (
+        !/^[0-9a-fA-F]{6}$/.test(
+          hex
+        )
+      ) {
+        return res.status(400).json({
+          error:
+            "Paramètre 'hex' requis, format RRGGBB, ex: ff0000."
+        });
+      }
+
+      res.json(
+        await setColor(hex)
+      );
+    } catch (err) {
+      res.status(500).json({
+        error: err.message
+      });
+    }
+  }
+);
 
 app.get("/", (req, res) => {
   res.send(
@@ -390,29 +611,39 @@ app.get("/", (req, res) => {
   );
 });
 
-// === SERVEUR ===
+// ============================================================
+// SERVEUR
+// ============================================================
 
 const PORT =
   process.env.PORT || 3000;
 
-app.listen(PORT, () =>
-  console.log(
-    `Palmi Smart Home lancé sur le port ${PORT}`
-  )
+app.listen(
+  PORT,
+  () => {
+    console.log(
+      `Palmi Smart Home lancé sur le port ${PORT}`
+    );
+  }
 );
 
-// === BOT TELEGRAM ===
+// ============================================================
+// BOT TELEGRAM
+// ============================================================
 
 if (TELEGRAM_TOKEN) {
-  const bot = new TelegramBot(
-    TELEGRAM_TOKEN,
-    {
-      polling: true,
-    }
-  );
+  const bot =
+    new TelegramBot(
+      TELEGRAM_TOKEN,
+      {
+        polling: true
+      }
+    );
 
   function isAllowed(chatId) {
-    if (ALLOWED_CHAT_IDS.length === 0) {
+    if (
+      ALLOWED_CHAT_IDS.length === 0
+    ) {
       return true;
     }
 
@@ -420,6 +651,110 @@ if (TELEGRAM_TOKEN) {
       String(chatId)
     );
   }
+
+  // ==========================================================
+  // AUTOMATISATION NUIT
+  // ==========================================================
+
+  let lastNightRun = "";
+
+  async function runNightAutomation() {
+    if (!automations.night) {
+      return;
+    }
+
+    try {
+      const data =
+        await getLightState();
+
+      const statusList =
+        data.result || [];
+
+      const switchStatus =
+        statusList.find(
+          (item) =>
+            item.code ===
+              "switch_led" ||
+            item.code === "switch"
+        );
+
+      const isOn =
+        switchStatus &&
+        switchStatus.value === true;
+
+      if (!isOn) {
+        console.log(
+          "🌙 Automatisation nuit : lumière déjà éteinte."
+        );
+
+        return;
+      }
+
+      await turnOff();
+
+      console.log(
+        "🌙 Automatisation nuit : lumière éteinte."
+      );
+
+      const chatIds =
+        ALLOWED_CHAT_IDS.length > 0
+          ? ALLOWED_CHAT_IDS
+          : [];
+
+      for (
+        const chatId of chatIds
+      ) {
+        await bot.sendMessage(
+          chatId,
+          "🌙 Tu dors pas ? J'ai vu que tu as sûrement rallumé la lumière.\n" +
+            "💡 Je l'éteins pour toi.\n" +
+            "Dors bien ! 😴"
+        );
+      }
+    } catch (err) {
+      console.error(
+        "❌ Erreur automatisation nuit :",
+        err.message
+      );
+    }
+  }
+
+  // Vérification chaque seconde.
+  // Europe/Paris gère automatiquement l'heure
+  // d'été et l'heure d'hiver.
+
+  setInterval(
+    async () => {
+      const currentTime =
+        getParisTime();
+
+      const currentDate =
+        getParisDate();
+
+      const runId =
+        `${currentDate}-03:00`;
+
+      if (
+        automations.night &&
+        currentTime === "03:00" &&
+        lastNightRun !== runId
+      ) {
+        lastNightRun =
+          runId;
+
+        await runNightAutomation();
+      }
+    },
+    1000
+  );
+
+  console.log(
+    "🌙 Automatisations Palmi prêtes — Europe/Paris"
+  );
+
+  // ==========================================================
+  // COULEURS
+  // ==========================================================
 
   const NAMED_COLORS = {
     rouge: "ff0000",
@@ -430,13 +765,18 @@ if (TELEGRAM_TOKEN) {
     rose: "ff69b4",
     orange: "ffa500",
     cyan: "00ffff",
-    turquoise: "40e0d0",
+    turquoise: "40e0d0"
   };
+
+  // ==========================================================
+  // MESSAGES TELEGRAM
+  // ==========================================================
 
   bot.on(
     "message",
     async (msg) => {
-      const chatId = msg.chat.id;
+      const chatId =
+        msg.chat.id;
 
       const text = (
         msg.text || ""
@@ -444,18 +784,90 @@ if (TELEGRAM_TOKEN) {
         .toLowerCase()
         .trim();
 
-      if (!isAllowed(chatId)) {
+      if (
+        !isAllowed(chatId)
+      ) {
         bot.sendMessage(
           chatId,
           "⛔ Tu n'es pas autorisé à utiliser ce bot."
         );
+
         return;
       }
 
       try {
-        // === ALLUMER ===
+        // ======================================================
+        // AUTOMATISATIONS
+        // ======================================================
 
-        if (text.includes("allume")) {
+        if (
+          text ===
+            "/add automation" ||
+          text ===
+            "/add_automation"
+        ) {
+          automations.night =
+            true;
+
+          saveAutomations();
+
+          bot.sendMessage(
+            chatId,
+            "🌙 Automatisation nuit activée !\n\n" +
+              "⏰ Tous les jours à 03:00 (heure de Paris)\n" +
+              "💡 Si la lumière est allumée, Palmi l'éteindra.\n" +
+              "😴 Puis Palmi t'enverra son message.\n\n" +
+              "☀️❄️ L'heure été/hiver est automatique."
+          );
+
+          return;
+        }
+
+        if (
+          text ===
+            "/automations"
+        ) {
+          bot.sendMessage(
+            chatId,
+            "🤖 Automatisations Palmi\n\n" +
+              `🌙 Nuit : ${
+                automations.night
+                  ? "✅ Activée"
+                  : "❌ Désactivée"
+              }\n` +
+              "⏰ 03:00 — Europe/Paris\n" +
+              "☀️❄️ Passage été/hiver automatique."
+          );
+
+          return;
+        }
+
+        if (
+          text ===
+            "/remove automation" ||
+          text ===
+            "/remove_automation"
+        ) {
+          automations.night =
+            false;
+
+          saveAutomations();
+
+          bot.sendMessage(
+            chatId,
+            "🌙 Automatisation nuit désactivée."
+          );
+
+          return;
+        }
+
+        // ======================================================
+        // ALLUMER
+        // ======================================================
+
+        if (
+          text.includes("allume")
+        ) {
           await turnOn();
 
           bot.sendMessage(
@@ -466,12 +878,20 @@ if (TELEGRAM_TOKEN) {
           return;
         }
 
-        // === ÉTEINDRE ===
+        // ======================================================
+        // ÉTEINDRE
+        // ======================================================
 
         if (
-          text.includes("éteins") ||
-          text.includes("eteins") ||
-          text.includes("éteint")
+          text.includes(
+            "éteins"
+          ) ||
+          text.includes(
+            "eteins"
+          ) ||
+          text.includes(
+            "éteint"
+          )
         ) {
           await turnOff();
 
@@ -483,10 +903,19 @@ if (TELEGRAM_TOKEN) {
           return;
         }
 
-        // === MODE BLANC ===
+        // ======================================================
+        // MODE BLANC
+        // ======================================================
 
-        if (text.includes("blanc")) {
-          await setWhite(50, 100);
+        if (
+          text.includes(
+            "blanc"
+          )
+        ) {
+          await setWhite(
+            50,
+            100
+          );
 
           bot.sendMessage(
             chatId,
@@ -496,7 +925,9 @@ if (TELEGRAM_TOKEN) {
           return;
         }
 
-        // === LUMINOSITÉ ===
+        // ======================================================
+        // LUMINOSITÉ
+        // ======================================================
 
         const brightnessMatch =
           text.match(
@@ -506,19 +937,24 @@ if (TELEGRAM_TOKEN) {
             /(\d+)\s*%/
           );
 
-        if (brightnessMatch) {
-          const value = Math.min(
-            100,
-            Math.max(
-              0,
-              parseInt(
-                brightnessMatch[1],
-                10
+        if (
+          brightnessMatch
+        ) {
+          const value =
+            Math.min(
+              100,
+              Math.max(
+                0,
+                parseInt(
+                  brightnessMatch[1],
+                  10
+                )
               )
-            )
-          );
+            );
 
-          await setBrightness(value);
+          await setBrightness(
+            value
+          );
 
           bot.sendMessage(
             chatId,
@@ -528,13 +964,21 @@ if (TELEGRAM_TOKEN) {
           return;
         }
 
-        // === BAISSER LUMINOSITÉ ===
+        // ======================================================
+        // BAISSER LUMINOSITÉ
+        // ======================================================
 
         if (
-          text.includes("baisse") &&
-          text.includes("luminosit")
+          text.includes(
+            "baisse"
+          ) &&
+          text.includes(
+            "luminosit"
+          )
         ) {
-          await setBrightness(20);
+          await setBrightness(
+            20
+          );
 
           bot.sendMessage(
             chatId,
@@ -544,13 +988,21 @@ if (TELEGRAM_TOKEN) {
           return;
         }
 
-        // === MONTER LUMINOSITÉ ===
+        // ======================================================
+        // MONTER LUMINOSITÉ
+        // ======================================================
 
         if (
-          text.includes("monte") &&
-          text.includes("luminosit")
+          text.includes(
+            "monte"
+          ) &&
+          text.includes(
+            "luminosit"
+          )
         ) {
-          await setBrightness(100);
+          await setBrightness(
+            100
+          );
 
           bot.sendMessage(
             chatId,
@@ -560,18 +1012,26 @@ if (TELEGRAM_TOKEN) {
           return;
         }
 
-        // === COULEURS NOMMÉES ===
+        // ======================================================
+        // COULEURS NOMMÉES
+        // ======================================================
 
         for (
-          const [name, hex]
-          of Object.entries(
+          const [
+            name,
+            hex
+          ] of Object.entries(
             NAMED_COLORS
           )
         ) {
           if (
-            text.includes(name)
+            text.includes(
+              name
+            )
           ) {
-            await setColor(hex);
+            await setColor(
+              hex
+            );
 
             bot.sendMessage(
               chatId,
@@ -582,7 +1042,9 @@ if (TELEGRAM_TOKEN) {
           }
         }
 
-        // === COULEUR HEX ===
+        // ======================================================
+        // COULEUR HEX
+        // ======================================================
 
         const hexMatch =
           text.match(
@@ -591,7 +1053,9 @@ if (TELEGRAM_TOKEN) {
 
         if (
           hexMatch &&
-          text.includes("couleur")
+          text.includes(
+            "couleur"
+          )
         ) {
           await setColor(
             hexMatch[1]
@@ -605,48 +1069,4 @@ if (TELEGRAM_TOKEN) {
           return;
         }
 
-        // === AIDE ===
-
-        if (
-          text === "/start" ||
-          text.includes("aide") ||
-          text === "/help"
-        ) {
-          bot.sendMessage(
-            chatId,
-            "👋 Salut, je suis Palmi Smart Home !\n\n" +
-            "Commandes :\n" +
-            "💡 « allume ma lumière »\n" +
-            "🌑 « éteins la lumière »\n" +
-            "🤍 « lumière blanche »\n" +
-            "🔆 « luminosité à 50 »\n" +
-            "🎨 « couleur rouge »\n" +
-            "🎨 « couleur bleu »\n" +
-            "🎨 « couleur vert »\n" +
-            "🎨 « couleur jaune »\n" +
-            "🎨 « couleur violet »\n" +
-            "🎨 « couleur rose »\n" +
-            "🎨 « couleur orange »\n" +
-            "🎨 « couleur cyan »\n" +
-            "🎨 « couleur turquoise »"
-          );
-
-          return;
-        }
-      } catch (err) {
-        bot.sendMessage(
-          chatId,
-          `❌ Erreur : ${err.message}`
-        );
-      }
-    }
-  );
-
-  console.log(
-    "Bot Telegram Palmi Smart Home démarré (polling)."
-  );
-} else {
-  console.log(
-    "TELEGRAM_BOT_TOKEN absent, bot Telegram désactivé."
-  );
-}
+        // =====================================================
