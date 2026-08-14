@@ -2,6 +2,9 @@ const express = require("express");
 const crypto = require("crypto");
 const axios = require("axios");
 const TelegramBot = require("node-telegram-bot-api");
+const cron = require("node-cron");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
 app.use(express.json());
@@ -16,6 +19,49 @@ const ALLOWED_CHAT_IDS = (process.env.TELEGRAM_ALLOWED_CHAT_IDS || "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
+
+// === AUTOMATION STATE FILE ===
+
+const AUTOMATIONS_FILE = path.join(
+  process.cwd(),
+  "automations.json"
+);
+
+function loadAutomationState() {
+  try {
+    if (fs.existsSync(AUTOMATIONS_FILE)) {
+      const data = fs.readFileSync(
+        AUTOMATIONS_FILE,
+        "utf-8"
+      );
+      return JSON.parse(data);
+    }
+  } catch (err) {
+    console.error(
+      `[AUTOMATION] Error loading automations.json: ${err.message}`
+    );
+  }
+  return { nightAutomation: { enabled: false } };
+}
+
+function saveAutomationState(state) {
+  try {
+    fs.writeFileSync(
+      AUTOMATIONS_FILE,
+      JSON.stringify(state, null, 2),
+      "utf-8"
+    );
+    console.log(
+      "[AUTOMATION] Automation state saved."
+    );
+  } catch (err) {
+    console.error(
+      `[AUTOMATION] Error saving automations.json: ${err.message}`
+    );
+  }
+}
+
+let automationState = loadAutomationState();
 
 // === Signature Tuya (HMAC-SHA256) ===
 
@@ -123,6 +169,21 @@ async function sendCommands(commands) {
     url,
     token,
     { commands }
+  );
+
+  return data;
+}
+
+// === GET DEVICE STATUS ===
+
+async function getDeviceStatus() {
+  const token = await getToken();
+  const url = `/v1.0/devices/${DEVICE_ID}/status`;
+
+  const data = await signedRequest(
+    "GET",
+    url,
+    token
   );
 
   return data;
@@ -395,11 +456,15 @@ app.get("/", (req, res) => {
 const PORT =
   process.env.PORT || 3000;
 
-app.listen(PORT, () =>
+const server = app.listen(PORT, () => {
   console.log(
     `Palmi Smart Home lancé sur le port ${PORT}`
-  )
-);
+  );
+  console.log(
+    "[AUTOMATION] Automation system initialized. State: ",
+    automationState
+  );
+});
 
 // === BOT TELEGRAM ===
 
@@ -433,6 +498,99 @@ if (TELEGRAM_TOKEN) {
     turquoise: "40e0d0",
   };
 
+  // === NIGHT AUTOMATION SCHEDULER ===
+
+  let nightAutomationJob = null;
+
+  function scheduleNightAutomation() {
+    if (nightAutomationJob) {
+      nightAutomationJob.stop();
+      nightAutomationJob = null;
+    }
+
+    if (automationState.nightAutomation.enabled) {
+      // 03:00 every day in Europe/Paris timezone
+      nightAutomationJob = cron.schedule(
+        "0 3 * * *",
+        async () => {
+          console.log(
+            "[AUTOMATION] Night automation triggered at 03:00 (Europe/Paris)"
+          );
+
+          try {
+            const status = await getDeviceStatus();
+
+            if (
+              !status.success ||
+              !status.result
+            ) {
+              console.error(
+                "[AUTOMATION] Failed to get device status"
+              );
+              return;
+            }
+
+            // Find switch_led status in result
+            const switchLedStatus = status.result.find(
+              (s) => s.code === "switch_led"
+            );
+
+            if (!switchLedStatus) {
+              console.warn(
+                "[AUTOMATION] switch_led status not found"
+              );
+              return;
+            }
+
+            const isLedOn =
+              switchLedStatus.value === true;
+
+            if (isLedOn) {
+              console.log(
+                "[AUTOMATION] LED is ON, turning it off..."
+              );
+              await turnOff();
+
+              // Send message to allowed chats
+              for (
+                const chatId of ALLOWED_CHAT_IDS
+              ) {
+                try {
+                  await bot.sendMessage(
+                    chatId,
+                    "🌙 Tu dors pas ? J'ai vu que tu as sûrement rallumé la lumière. Je l'éteins pour toi. Dors bien ! 😴"
+                  );
+                } catch (err) {
+                  console.error(
+                    `[AUTOMATION] Failed to send Telegram message to ${chatId}: ${err.message}`
+                  );
+                }
+              }
+            } else {
+              console.log(
+                "[AUTOMATION] LED is already OFF, no action taken."
+              );
+            }
+          } catch (err) {
+            console.error(
+              `[AUTOMATION] Error in night automation: ${err.message}`
+            );
+          }
+        },
+        {
+          timezone: "Europe/Paris",
+        }
+      );
+
+      console.log(
+        "[AUTOMATION] Night automation scheduled for 03:00 Europe/Paris daily."
+      );
+    }
+  }
+
+  // Schedule on startup if enabled
+  scheduleNightAutomation();
+
   bot.on(
     "message",
     async (msg) => {
@@ -453,6 +611,63 @@ if (TELEGRAM_TOKEN) {
       }
 
       try {
+        // === ADD AUTOMATION ===
+
+        if (
+          text === "/add_automation" ||
+          text === "/add automation"
+        ) {
+          automationState.nightAutomation.enabled =
+            true;
+          saveAutomationState(automationState);
+          scheduleNightAutomation();
+
+          bot.sendMessage(
+            chatId,
+            "✅ Automation de nuit activée ! La lumière s'éteindra automatiquement à 03:00 (Europe/Paris) si elle est allumée."
+          );
+
+          return;
+        }
+
+        // === LIST AUTOMATIONS ===
+
+        if (text === "/automations") {
+          const status =
+            automationState.nightAutomation
+              .enabled ? "✅ ACTIVE" : "❌ INACTIVE";
+
+          bot.sendMessage(
+            chatId,
+            `🤖 Automations:\n\n` +
+            `Night Automation (03:00 Europe/Paris): ${status}\n\n` +
+            `Commandes:\n` +
+            `/add_automation ou /add automation - Activer\n` +
+            `/remove_automation ou /remove automation - Désactiver`
+          );
+
+          return;
+        }
+
+        // === REMOVE AUTOMATION ===
+
+        if (
+          text === "/remove_automation" ||
+          text === "/remove automation"
+        ) {
+          automationState.nightAutomation.enabled =
+            false;
+          saveAutomationState(automationState);
+          scheduleNightAutomation();
+
+          bot.sendMessage(
+            chatId,
+            "❌ Automation de nuit désactivée."
+          );
+
+          return;
+        }
+
         // === ALLUMER ===
 
         if (text.includes("allume")) {
@@ -614,21 +829,25 @@ if (TELEGRAM_TOKEN) {
         ) {
           bot.sendMessage(
             chatId,
-            "👋 Salut, je suis Palmi Smart Home !\n\n" +
-            "Commandes :\n" +
-            "💡 « allume ma lumière »\n" +
-            "🌑 « éteins la lumière »\n" +
-            "🤍 « lumière blanche »\n" +
-            "🔆 « luminosité à 50 »\n" +
-            "🎨 « couleur rouge »\n" +
-            "🎨 « couleur bleu »\n" +
-            "🎨 « couleur vert »\n" +
-            "🎨 « couleur jaune »\n" +
-            "🎨 « couleur violet »\n" +
-            "🎨 « couleur rose »\n" +
-            "🎨 « couleur orange »\n" +
-            "🎨 « couleur cyan »\n" +
-            "🎨 « couleur turquoise »"
+            "👋 Salut, je suis Palmi Smart Home !\\n\\n" +
+            "Commandes :\\n" +
+            "💡 « allume ma lumière »\\n" +
+            "🌑 « éteins la lumière »\\n" +
+            "🤍 « lumière blanche »\\n" +
+            "🔆 « luminosité à 50 »\\n" +
+            "🎨 « couleur rouge »\\n" +
+            "🎨 « couleur bleu »\\n" +
+            "🎨 « couleur vert »\\n" +
+            "🎨 « couleur jaune »\\n" +
+            "🎨 « couleur violet »\\n" +
+            "🎨 « couleur rose »\\n" +
+            "🎨 « couleur orange »\\n" +
+            "🎨 « couleur cyan »\\n" +
+            "🎨 « couleur turquoise »\\n\\n" +
+            "🤖 Automations :\\n" +
+            "/add_automation - Activer nuit auto (03:00)\\n" +
+            "/automations - Voir statut\\n" +
+            "/remove_automation - Désactiver"
           );
 
           return;
@@ -645,8 +864,36 @@ if (TELEGRAM_TOKEN) {
   console.log(
     "Bot Telegram Palmi Smart Home démarré (polling)."
   );
+  console.log(
+    `[AUTOMATION] Allowed chat IDs: ${ALLOWED_CHAT_IDS.join(", ") || "ALL"}`
+  );
 } else {
   console.log(
     "TELEGRAM_BOT_TOKEN absent, bot Telegram désactivé."
   );
 }
+
+// === GRACEFUL SHUTDOWN ===
+
+process.on("SIGTERM", () => {
+  console.log("[SHUTDOWN] SIGTERM received, shutting down gracefully...");
+  if (nightAutomationJob) {
+    nightAutomationJob.stop();
+  }
+  server.close(() => {
+    console.log("[SHUTDOWN] Server closed.");
+    process.exit(0);
+  });
+});
+
+process.on("SIGINT", () => {
+  console.log("[SHUTDOWN] SIGINT received, shutting down gracefully...");
+  if (nightAutomationJob) {
+    nightAutomationJob.stop();
+  }
+  server.close(() => {
+    console.log("[SHUTDOWN] Server closed.");
+    process.exit(0);
+  });
+});
+
