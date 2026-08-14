@@ -1,0 +1,13 @@
+{
+  "name": "palmi-smarthome",
+  "version": "1.0.0",
+  "description": "Contrôle cloud de la strip LED via API Tuya - on/off, luminosité, couleur",
+  "main": "palmi-smarthome.js",
+  "scripts": {
+    "start": "node palmi-smarthome.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "axios": "^1.7.2"
+  }
+}
