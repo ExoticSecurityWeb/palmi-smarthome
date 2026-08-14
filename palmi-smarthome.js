@@ -279,3 +279,17 @@ if (TELEGRAM_TOKEN) {
 } else {
   console.log("TELEGRAM_BOT_TOKEN absent, bot Telegram désactivé.");
 }
+async function setWhite(warmth, brightness) {
+  const tempValue = Math.round((warmth / 100) * 1000);
+  const brightValue = Math.round((brightness / 100) * 1000);
+  return sendCommands([
+    { code: "work_mode", value: "white" },
+    { code: "temp_value", value: tempValue },
+    { code: "bright_value", value: brightValue },
+  ]);
+}
+if (text.includes("blanc")) {
+  await setWhite(50, 100);
+  bot.sendMessage(chatId, "🤍 Lumière en blanc !");
+  return;
+}
