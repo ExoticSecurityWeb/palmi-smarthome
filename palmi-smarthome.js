@@ -26,198 +26,235 @@ const ALLOWED_CHAT_IDS = (
   .map((s) => s.trim())
   .filter(Boolean);
 
-// ==========================================================
-// AUTOMATISATIONS PALMI
-// ==========================================================
+// ======================================================
+// AUTOMATISATIONS
+// ======================================================
 
-let lastAutomationRuns = {};
+if (text === "/add") {
+  automationCreation[chatId] = {
+    step: "name"
+  };
 
-function hasRunToday(id, date) {
-  return lastAutomationRuns[id] === date;
+  await bot.sendMessage(
+    chatId,
+    "🌴 Palmi va créer une nouvelle automatisation !\n\n" +
+    "🏷️ Donne-moi le nom de ton automatisation.\n" +
+    "Exemple : Dîner 🍽️"
+  );
+
+  return;
 }
 
-function markRun(id, date) {
-  lastAutomationRuns[id] = date;
-}
-
-async function sendToAllowedChats(message) {
-  for (const chatId of ALLOWED_CHAT_IDS) {
-    try {
-      await bot.sendMessage(chatId, message);
-    } catch (err) {
-      console.error(
-        `❌ Erreur notification Telegram ${chatId}:`,
-        err.message
-      );
-    }
-  }
-}
-
-async function runNightAutomation() {
-  try {
-    const data = await getLightState();
-    const statusList = data.result || [];
-
-    const switchStatus = statusList.find(
-      (item) =>
-        item.code === "switch_led" ||
-        item.code === "switch"
+if (text === "/automations") {
+  if (
+    !automations.list ||
+    automations.list.length === 0
+  ) {
+    await bot.sendMessage(
+      chatId,
+      "🌴 Aucune automatisation créée pour le moment.\n\n" +
+      "Utilise /add pour en créer une."
     );
 
-    const isOn =
-      switchStatus &&
-      switchStatus.value === true;
+    return;
+  }
 
-    if (!isOn) {
-      console.log(
-        "🌙 03:00 : lumière déjà éteinte."
+  let message =
+    "🤖🌴 Tes automatisations Palmi\n\n";
+
+  for (const automation of automations.list) {
+    message +=
+      `🏷️ ${automation.name}\n` +
+      `⏰ ${automation.time}\n` +
+      `📝 ${automation.description}\n\n`;
+  }
+
+  await bot.sendMessage(
+    chatId,
+    message
+  );
+
+  return;
+}
+
+if (text === "/remove") {
+  if (
+    !automations.list ||
+    automations.list.length === 0
+  ) {
+    await bot.sendMessage(
+      chatId,
+      "🌴 Tu n'as aucune automatisation à supprimer."
+    );
+
+    return;
+  }
+
+  let message =
+    "🗑️ Quelle automatisation veux-tu supprimer ?\n\n";
+
+  automations.list.forEach(
+    (automation, index) => {
+      message +=
+        `${index + 1}. ${automation.name} — ${automation.time}\n`;
+    }
+  );
+
+  message +=
+    "\nRéponds avec le numéro.";
+
+  automationCreation[chatId] = {
+    step: "remove",
+    message
+  };
+
+  await bot.sendMessage(
+    chatId,
+    message
+  );
+
+  return;
+}
+
+const creation = automationCreation[chatId];
+
+if (creation) {
+
+  if (creation.step === "name") {
+    creation.name = msg.text.trim();
+    creation.step = "time";
+
+    await bot.sendMessage(
+      chatId,
+      "⏰ À quelle heure doit-elle s'exécuter ?\n\n" +
+      "Exemple : 19:15"
+    );
+
+    return;
+  }
+
+  if (creation.step === "time") {
+    const time = msg.text.trim();
+
+    if (
+      !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)
+    ) {
+      await bot.sendMessage(
+        chatId,
+        "❌ Heure invalide.\n\n" +
+        "Utilise le format HH:MM.\n" +
+        "Exemple : 19:15"
       );
+
       return;
     }
 
-    await turnOff();
+    creation.time = time;
+    creation.step = "description";
 
-    console.log(
-      "🌙 03:00 : lumière éteinte."
+    await bot.sendMessage(
+      chatId,
+      "📝 Décris ce que cette automatisation doit faire."
     );
 
-    await sendToAllowedChats(
-      "🌙 Tu dors pas ? Tu as sûrement rallumé la lumière.\n" +
-      "💡 Je l'éteins pour toi.\n" +
-      "Dors bien ! 😴"
-    );
-  } catch (err) {
-    console.error(
-      "❌ Erreur automatisation 03:00 :",
-      err.message
-    );
+    return;
   }
-}
 
-async function run02Automation() {
-  try {
-    const data = await getLightState();
-    const statusList = data.result || [];
+  if (creation.step === "description") {
+    creation.description =
+      msg.text.trim();
 
-    const switchStatus = statusList.find(
-      (item) =>
-        item.code === "switch_led" ||
-        item.code === "switch"
+    creation.step = "message";
+
+    await bot.sendMessage(
+      chatId,
+      "💬 Quel message Palmi doit-il envoyer quand " +
+      "l'automatisation s'exécute ?"
     );
 
-    const isOn =
-      switchStatus &&
-      switchStatus.value === true;
+    return;
+  }
 
-    if (!isOn) {
-      console.log(
-        "🌙 02:00 : lumière déjà éteinte."
+  if (creation.step === "message") {
+    creation.message =
+      msg.text.trim();
+
+    const automation = {
+      id: Date.now().toString(),
+      name: creation.name,
+      time: creation.time,
+      description: creation.description,
+      message: creation.message
+    };
+
+    if (!Array.isArray(automations.list)) {
+      automations.list = [];
+    }
+
+    automations.list.push(
+      automation
+    );
+
+    delete automationCreation[chatId];
+
+    if (
+      typeof saveAutomations === "function"
+    ) {
+      await saveAutomations();
+    }
+
+    await bot.sendMessage(
+      chatId,
+      "✅ Automatisation créée !\n\n" +
+      "🌴 " + automation.name + "\n" +
+      "⏰ " + automation.time + "\n" +
+      "📝 " + automation.description + "\n" +
+      "💬 " + automation.message
+    );
+
+    return;
+  }
+
+  if (creation.step === "remove") {
+    const index =
+      parseInt(msg.text.trim(), 10) - 1;
+
+    if (
+      isNaN(index) ||
+      index < 0 ||
+      index >= automations.list.length
+    ) {
+      await bot.sendMessage(
+        chatId,
+        "❌ Numéro invalide."
       );
+
       return;
     }
 
-    await turnOff();
+    const removed =
+      automations.list.splice(
+        index,
+        1
+      )[0];
 
-    console.log(
-      "🌙 02:00 : lumière éteinte."
+    delete automationCreation[chatId];
+
+    if (
+      typeof saveAutomations === "function"
+    ) {
+      await saveAutomations();
+    }
+
+    await bot.sendMessage(
+      chatId,
+      "🗑️ Automatisation supprimée !\n\n" +
+      "🌴 " + removed.name
     );
 
-    await sendToAllowedChats(
-      "Oh, Palmi a vu que la lumière était allumée, je l'ai éteinte pour toi. Bonne nuit ! 🌙"
-    );
-  } catch (err) {
-    console.error(
-      "❌ Erreur automatisation 02:00 :",
-      err.message
-    );
+    return;
   }
 }
-
-async function run0036Automation() {
-  try {
-    await setBrightness(30);
-
-    console.log(
-      "🌙 00:36 : luminosité réglée à 30%."
-    );
-
-    await sendToAllowedChats(
-      "Bonne nuit ! Palmi 🌴 baisse la luminosité de la lumière. Extinction automatique à 2h ⏰. Si elle est rallumée, nouvelle tentative à 3h"
-    );
-  } catch (err) {
-    console.error(
-      "❌ Erreur automatisation 00:36 :",
-      err.message
-    );
-  }
-}
-
-async function runDinnerAutomation() {
-  try {
-    await turnOn();
-    await setBrightness(100);
-
-    console.log(
-      "🍽️ 19:15 : lumière allumée à 100%."
-    );
-
-    await sendToAllowedChats(
-      "🍽️ Il est l'heure du dîner !"
-    );
-  } catch (err) {
-    console.error(
-      "❌ Erreur automatisation 19:15 :",
-      err.message
-    );
-  }
-}
-
-// Vérification chaque seconde — Europe/Paris
-setInterval(async () => {
-  const currentTime = getParisTime();
-  const currentDate = getParisDate();
-
-  if (
-    automations.night &&
-    currentTime === "00:36" &&
-    !hasRunToday("0036", currentDate)
-  ) {
-    markRun("0036", currentDate);
-    await run0036Automation();
-  }
-
-  if (
-    automations.night &&
-    currentTime === "02:00" &&
-    !hasRunToday("0200", currentDate)
-  ) {
-    markRun("0200", currentDate);
-    await run02Automation();
-  }
-
-  if (
-    automations.night &&
-    currentTime === "03:00" &&
-    !hasRunToday("0300", currentDate)
-  ) {
-    markRun("0300", currentDate);
-    await runNightAutomation();
-  }
-
-  if (
-    automations.night &&
-    currentTime === "19:15" &&
-    !hasRunToday("1915", currentDate)
-  ) {
-    markRun("1915", currentDate);
-    await runDinnerAutomation();
-  }
-}, 1000);
-
-console.log(
-  "🌙 Automatisations Palmi prêtes — Europe/Paris"
-);
-
 
 // ============================================================
 // SIGNATURE TUYA
