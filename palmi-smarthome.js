@@ -26,71 +26,198 @@ const ALLOWED_CHAT_IDS = (
   .map((s) => s.trim())
   .filter(Boolean);
 
-// ============================================================
-// AUTOMATISATIONS PALMI
-// ============================================================
+//// ==========================================================
+/ AUTOMATISATIONS PALMI
+ ==========================================================
 
-const AUTOMATION_FILE = path.join(
-  __dirname,
-  "automations.json"
-);
+let lastAutomationRuns = {};
 
-const AUTOMATION_TIMEZONE = "Europe/Paris";
-
-let automations = {
-  night: false
-};
-
-try {
-  if (fs.existsSync(AUTOMATION_FILE)) {
-    const saved = JSON.parse(
-      fs.readFileSync(AUTOMATION_FILE, "utf8")
-    );
-
-    automations = {
-      ...automations,
-      ...saved
-    };
-  }
-} catch (err) {
-  console.error(
-    "❌ Erreur lecture automations.json :",
-    err.message
-  );
+function hasRunToday(id, date) {
+  return lastAutomationRuns[id] === date;
 }
 
-function saveAutomations() {
+function markRun(id, date) {
+  lastAutomationRuns[id] = date;
+}
+
+async function sendToAllowedChats(message) {
+  for (const chatId of ALLOWED_CHAT_IDS) {
+    try {
+      await bot.sendMessage(chatId, message);
+    } catch (err) {
+      console.error(
+        `❌ Erreur notification Telegram ${chatId}:`,
+        err.message
+      );
+    }
+  }
+}
+
+async function runNightAutomation() {
   try {
-    fs.writeFileSync(
-      AUTOMATION_FILE,
-      JSON.stringify(automations, null, 2),
-      "utf8"
+    const data = await getLightState();
+    const statusList = data.result || [];
+
+    const switchStatus = statusList.find(
+      (item) =>
+        item.code === "switch_led" ||
+        item.code === "switch"
+    );
+
+    const isOn =
+      switchStatus &&
+      switchStatus.value === true;
+
+    if (!isOn) {
+      console.log(
+        "🌙 03:00 : lumière déjà éteinte."
+      );
+      return;
+    }
+
+    await turnOff();
+
+    console.log(
+      "🌙 03:00 : lumière éteinte."
+    );
+
+    await sendToAllowedChats(
+      "🌙 Tu dors pas ? Tu as sûrement rallumé la lumière.\n" +
+      "💡 Je l'éteins pour toi.\n" +
+      "Dors bien ! 😴"
     );
   } catch (err) {
     console.error(
-      "❌ Erreur sauvegarde automatisations :",
+      "❌ Erreur automatisation 03:00 :",
       err.message
     );
   }
 }
 
-function getParisTime() {
-  return new Intl.DateTimeFormat("fr-FR", {
-    timeZone: AUTOMATION_TIMEZONE,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  }).format(new Date());
+async function run02Automation() {
+  try {
+    const data = await getLightState();
+    const statusList = data.result || [];
+
+    const switchStatus = statusList.find(
+      (item) =>
+        item.code === "switch_led" ||
+        item.code === "switch"
+    );
+
+    const isOn =
+      switchStatus &&
+      switchStatus.value === true;
+
+    if (!isOn) {
+      console.log(
+        "🌙 02:00 : lumière déjà éteinte."
+      );
+      return;
+    }
+
+    await turnOff();
+
+    console.log(
+      "🌙 02:00 : lumière éteinte."
+    );
+
+    await sendToAllowedChats(
+      "Oh, Palmi a vu que la lumière était allumée, je l'ai éteinte pour toi. Bonne nuit ! 🌙"
+    );
+  } catch (err) {
+    console.error(
+      "❌ Erreur automatisation 02:00 :",
+      err.message
+    );
+  }
 }
 
-function getParisDate() {
-  return new Intl.DateTimeFormat("fr-CA", {
-    timeZone: AUTOMATION_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(new Date());
+async function run0036Automation() {
+  try {
+    await setBrightness(30);
+
+    console.log(
+      "🌙 00:36 : luminosité réglée à 30%."
+    );
+
+    await sendToAllowedChats(
+      "Bonne nuit ! Palmi 🌴 baisse la luminosité de la lumière. Extinction automatique à 2h ⏰. Si elle est rallumée, nouvelle tentative à 3h"
+    );
+  } catch (err) {
+    console.error(
+      "❌ Erreur automatisation 00:36 :",
+      err.message
+    );
+  }
 }
+
+async function runDinnerAutomation() {
+  try {
+    await turnOn();
+    await setBrightness(100);
+
+    console.log(
+      "🍽️ 19:15 : lumière allumée à 100%."
+    );
+
+    await sendToAllowedChats(
+      "🍽️ Il est l'heure du dîner !"
+    );
+  } catch (err) {
+    console.error(
+      "❌ Erreur automatisation 19:15 :",
+      err.message
+    );
+  }
+}
+
+// Vérification chaque seconde — Europe/Paris
+setInterval(async () => {
+  const currentTime = getParisTime();
+  const currentDate = getParisDate();
+
+  if (
+    automations.night &&
+    currentTime === "00:36" &&
+    !hasRunToday("0036", currentDate)
+  ) {
+    markRun("0036", currentDate);
+    await run0036Automation();
+  }
+
+  if (
+    automations.night &&
+    currentTime === "02:00" &&
+    !hasRunToday("0200", currentDate)
+  ) {
+    markRun("0200", currentDate);
+    await run02Automation();
+  }
+
+  if (
+    automations.night &&
+    currentTime === "03:00" &&
+    !hasRunToday("0300", currentDate)
+  ) {
+    markRun("0300", currentDate);
+    await runNightAutomation();
+  }
+
+  if (
+    automations.night &&
+    currentTime === "19:15" &&
+    !hasRunToday("1915", currentDate)
+  ) {
+    markRun("1915", currentDate);
+    await runDinnerAutomation();
+  }
+}, 1000);
+
+console.log(
+  "🌙 Automatisations Palmi prêtes — Europe/Paris"
+);
+
 
 // ============================================================
 // SIGNATURE TUYA
