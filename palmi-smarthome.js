@@ -26,8 +26,8 @@ const ALLOWED_CHAT_IDS = (
   .map((s) => s.trim())
   .filter(Boolean);
 
-//// ==========================================================
-/ AUTOMATISATIONS PALMI
+// ==========================================================
+// AUTOMATISATIONS PALMI //
  ==========================================================
 
 let lastAutomationRuns = {};
