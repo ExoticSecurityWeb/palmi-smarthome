@@ -27,10 +27,95 @@ const ALLOWED_CHAT_IDS = (
   .filter(Boolean);
 
 // ==========================================================
-// AUTOMATISATIONS PALMI
+// UTILITAIRES DATE/HEURE — EUROPE/PARIS
 // ==========================================================
 
+function getParisTime() {
+  const now = new Date();
+  const parisTime = new Date(
+    now.toLocaleString("en-US", {
+      timeZone: "Europe/Paris"
+    })
+  );
+  const h = String(parisTime.getHours()).padStart(2, "0");
+  const m = String(parisTime.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
+function getParisDate() {
+  const now = new Date();
+  const parisTime = new Date(
+    now.toLocaleString("en-US", {
+      timeZone: "Europe/Paris"
+    })
+  );
+  const y = parisTime.getFullYear();
+  const m = String(parisTime.getMonth() + 1).padStart(2, "0");
+  const d = String(parisTime.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+// ==========================================================
+// PERSISTENCE AUTOMATISATIONS
+// ==========================================================
+
+const AUTOMATIONS_FILE = path.join(
+  __dirname,
+  "automations.json"
+);
+
+let automations = {
+  night: true,
+  custom: []
+};
+
 let lastAutomationRuns = {};
+
+function loadAutomations() {
+  try {
+    if (fs.existsSync(AUTOMATIONS_FILE)) {
+      const data = fs.readFileSync(
+        AUTOMATIONS_FILE,
+        "utf8"
+      );
+      const loaded = JSON.parse(data);
+      automations.night = loaded.night ?? true;
+      automations.custom = loaded.custom ?? [];
+      console.log(
+        "✅ Automatisations chargées depuis automations.json"
+      );
+    } else {
+      console.log(
+        "ℹ️  automations.json non trouvé, utilisation valeurs par défaut"
+      );
+      saveAutomations();
+    }
+  } catch (err) {
+    console.error(
+      "❌ Erreur chargement automations.json:",
+      err.message
+    );
+    automations = { night: true, custom: [] };
+    saveAutomations();
+  }
+}
+
+function saveAutomations() {
+  try {
+    fs.writeFileSync(
+      AUTOMATIONS_FILE,
+      JSON.stringify(automations, null, 2)
+    );
+    console.log(
+      "✅ Automatisations sauvegardées dans automations.json"
+    );
+  } catch (err) {
+    console.error(
+      "❌ Erreur sauvegarde automations.json:",
+      err.message
+    );
+  }
+}
 
 function hasRunToday(id, date) {
   return lastAutomationRuns[id] === date;
@@ -39,6 +124,10 @@ function hasRunToday(id, date) {
 function markRun(id, date) {
   lastAutomationRuns[id] = date;
 }
+
+// ==========================================================
+// AUTOMATISATIONS PALMI — FIXES
+// ==========================================================
 
 async function sendToAllowedChats(message) {
   for (const chatId of ALLOWED_CHAT_IDS) {
@@ -172,11 +261,59 @@ async function runDinnerAutomation() {
   }
 }
 
+async function runCustomAutomation(automation) {
+  try {
+    const action = (automation.action || "").toLowerCase();
+
+    if (action === "allumer") {
+      await turnOn();
+    } else if (action === "éteindre" || action === "eteindre") {
+      await turnOff();
+    } else if (action.startsWith("luminosité")) {
+      const match = action.match(/(\d+)/);
+      if (match) {
+        const brightness = Math.min(100, Math.max(0, parseInt(match[1], 10)));
+        await setBrightness(brightness);
+      }
+    } else if (action === "blanc") {
+      await setWhite(50, 100);
+    } else if (action.startsWith("couleur")) {
+      const colorName = action.substring(7).trim();
+      const NAMED_COLORS = {
+        rouge: "ff0000",
+        bleu: "0000ff",
+        vert: "00ff00",
+        jaune: "ffff00",
+        violet: "800080",
+        rose: "ff69b4",
+        orange: "ffa500",
+        cyan: "00ffff",
+        turquoise: "40e0d0"
+      };
+      if (NAMED_COLORS[colorName]) {
+        await setColor(NAMED_COLORS[colorName]);
+      }
+    }
+
+    console.log(
+      `✅ Automatisation personnalisée "${automation.name}" exécutée à ${automation.time}`
+    );
+
+    await sendToAllowedChats(automation.message);
+  } catch (err) {
+    console.error(
+      `❌ Erreur automatisation personnalisée "${automation.name}":`,
+      err.message
+    );
+  }
+}
+
 // Vérification chaque seconde — Europe/Paris
-setInterval(async () => {
+const automationCheckInterval = setInterval(async () => {
   const currentTime = getParisTime();
   const currentDate = getParisDate();
 
+  // Automatisations fixes
   if (
     automations.night &&
     currentTime === "00:36" &&
@@ -212,16 +349,26 @@ setInterval(async () => {
     markRun("1915", currentDate);
     await runDinnerAutomation();
   }
+
+  // Automatisations personnalisées
+  for (const automation of automations.custom) {
+    if (
+      currentTime === automation.time &&
+      !hasRunToday(`custom_${automation.name}`, currentDate)
+    ) {
+      markRun(`custom_${automation.name}`, currentDate);
+      await runCustomAutomation(automation);
+    }
+  }
 }, 1000);
 
 console.log(
   "🌙 Automatisations Palmi prêtes — Europe/Paris"
 );
 
-
-// ============================================================
+// ==========================================================
 // SIGNATURE TUYA
-// ============================================================
+// ==========================================================
 
 function sha256(str) {
   return crypto
@@ -249,9 +396,9 @@ function buildStringToSign(
   return `${method}\n${contentSha256}\n${headersStr}\n${url}`;
 }
 
-// ============================================================
+// ==========================================================
 // AUTHENTIFICATION TUYA
-// ============================================================
+// ==========================================================
 
 async function getToken() {
   const t = Date.now().toString();
@@ -344,9 +491,9 @@ async function signedRequest(
   return res.data;
 }
 
-// ============================================================
+// ==========================================================
 // COMMANDES LED
-// ============================================================
+// ==========================================================
 
 async function sendCommands(commands) {
   const token =
@@ -365,9 +512,9 @@ async function sendCommands(commands) {
   );
 }
 
-// ============================================================
+// ==========================================================
 // ETAT DE LA LED
-// ============================================================
+// ==========================================================
 
 async function getLightState() {
   const token =
@@ -383,9 +530,9 @@ async function getLightState() {
   );
 }
 
-// ============================================================
+// ==========================================================
 // HEX -> HSV
-// ============================================================
+// ==========================================================
 
 function hexToHsv(hex) {
   const r = parseInt(
@@ -467,9 +614,9 @@ function hexToHsv(hex) {
   };
 }
 
-// ============================================================
+// ==========================================================
 // FONCTIONS LUMIERE
-// ============================================================
+// ==========================================================
 
 async function turnOn() {
   return sendCommands([
@@ -549,9 +696,9 @@ async function setColor(hex) {
   ]);
 }
 
-// ============================================================
+// ==========================================================
 // ROUTES HTTP
-// ============================================================
+// ==========================================================
 
 app.get(
   "/debug-functions",
@@ -729,9 +876,9 @@ app.get(
   }
 );
 
-// ============================================================
+// ==========================================================
 // SERVEUR
-// ============================================================
+// ==========================================================
 
 const PORT =
   process.env.PORT || 3000;
@@ -745,21 +892,23 @@ app.listen(
   }
 );
 
-// ============================================================
+// ==========================================================
 // BOT TELEGRAM
-// ============================================================
+// ==========================================================
+
+let bot;
 
 if (TELEGRAM_TOKEN) {
-  const bot =
-    new TelegramBot(
-      TELEGRAM_TOKEN,
-      {
-        polling: true
-      }
-    );
+  bot = new TelegramBot(
+    TELEGRAM_TOKEN,
+    {
+      polling: true
+    }
+  );
 
-  // Les conversations autorisées ayant parlé au bot
-  // sont mémorisées pour les notifications automatiques.
+  // État de conversation pour /add
+  const conversationState = {};
+
   const knownChatIds = new Set(
     ALLOWED_CHAT_IDS
   );
@@ -775,107 +924,6 @@ if (TELEGRAM_TOKEN) {
       String(chatId)
     );
   }
-
-  // ==========================================================
-  // AUTOMATISATION NUIT
-  // ==========================================================
-
-  let lastNightRun = "";
-
-  async function runNightAutomation() {
-    if (!automations.night) {
-      return;
-    }
-
-    try {
-      const data =
-        await getLightState();
-
-      const statusList =
-        data.result || [];
-
-      const switchStatus =
-        statusList.find(
-          (item) =>
-            item.code === "switch_led" ||
-            item.code === "switch"
-        );
-
-      const isOn =
-        switchStatus &&
-        switchStatus.value === true;
-
-      if (!isOn) {
-        console.log(
-          "🌙 Automatisation nuit : lumière déjà éteinte."
-        );
-
-        return;
-      }
-
-      await turnOff();
-
-      console.log(
-        "🌙 Automatisation nuit : lumière éteinte."
-      );
-
-      for (
-        const chatId of knownChatIds
-      ) {
-        try {
-          await bot.sendMessage(
-            chatId,
-            "🌙 Tu dors pas ? Tu as sûrement rallumé la lumière.\n" +
-              "💡 Je l'éteins pour toi.\n" +
-              "Dors bien ! 😴"
-          );
-        } catch (sendErr) {
-          console.error(
-            `❌ Impossible d'envoyer la notification à ${chatId} :`,
-            sendErr.message
-          );
-        }
-      }
-    } catch (err) {
-      console.error(
-        "❌ Erreur automatisation nuit :",
-        err.message
-      );
-    }
-  }
-
-  // Vérification chaque seconde.
-  // Europe/Paris gère automatiquement
-  // l'heure d'été et l'heure d'hiver.
-
-  setInterval(
-    async () => {
-      const currentTime =
-        getParisTime();
-
-      const currentDate =
-        getParisDate();
-
-      const runId =
-        `${currentDate}-03:00`;
-
-      if (
-        automations.night &&
-        currentTime === "03:00" &&
-        lastNightRun !== runId
-      ) {
-        lastNightRun =
-          runId;
-
-        await runNightAutomation();
-      }
-    },
-    1000
-  );
-
-  console.log(
-    "🌙 Automatisations Palmi prêtes — Europe/Paris"
-  );
 
   // ==========================================================
   // COULEURS
@@ -900,9 +948,7 @@ if (TELEGRAM_TOKEN) {
   bot.on(
     "message",
     async (msg) => {
-      const chatId =
-        msg.chat.id;
-
+      const chatId = msg.chat.id;
       const text = (
         msg.text || ""
       )
@@ -920,70 +966,192 @@ if (TELEGRAM_TOKEN) {
         return;
       }
 
-      // Permet aux notifications automatiques
-      // d'utiliser ce chat après une interaction.
       knownChatIds.add(
         String(chatId)
       );
 
       try {
         // ======================================================
-        // AUTOMATISATIONS
+        // GESTION CONVERSATION /add
+        // ======================================================
+
+        if (conversationState[chatId]) {
+          const state = conversationState[chatId];
+
+          if (state.step === "name") {
+            state.name = text;
+            state.step = "time";
+            await bot.sendMessage(
+              chatId,
+              "⏰ À quelle heure ? (format HH:MM, ex: 14:30)"
+            );
+            return;
+          }
+
+          if (state.step === "time") {
+            if (!/^\d{2}:\d{2}$/.test(text)) {
+              await bot.sendMessage(
+                chatId,
+                "❌ Format invalide. Utilise HH:MM (ex: 14:30)"
+              );
+              return;
+            }
+            state.time = text;
+            state.step = "action";
+            await bot.sendMessage(
+              chatId,
+              "💡 Quelle action ? (allumer, éteindre, luminosité N, blanc, couleur COULEUR)"
+            );
+            return;
+          }
+
+          if (state.step === "action") {
+            state.action = text;
+            state.step = "message";
+            await bot.sendMessage(
+              chatId,
+              "📨 Quel message envoyer lors de l'exécution ?"
+            );
+            return;
+          }
+
+          if (state.step === "message") {
+            state.message = text;
+
+            // Sauvegarder l'automatisation
+            const automation = {
+              name: state.name,
+              time: state.time,
+              action: state.action,
+              message: state.message
+            };
+
+            automations.custom.push(automation);
+            saveAutomations();
+
+            await bot.sendMessage(
+              chatId,
+              `✅ Automatisation créée !\n\n` +
+              `📛 Nom: ${automation.name}\n` +
+              `⏰ Heure: ${automation.time}\n` +
+              `💡 Action: ${automation.action}\n` +
+              `📨 Message: ${automation.message}`
+            );
+
+            delete conversationState[chatId];
+            return;
+          }
+        }
+
+        // ======================================================
+        // COMMANDE /add
         // ======================================================
 
         if (
-          text === "/add automation" ||
-          text === "/add_automation"
+          text === "/add" ||
+          text === "/add automation"
         ) {
-          automations.night =
-            true;
+          conversationState[chatId] = {
+            step: "name"
+          };
 
-          saveAutomations();
-
-          bot.sendMessage(
+          await bot.sendMessage(
             chatId,
-            "🌙 Automatisation nuit activée !\n\n" +
-              "⏰ Tous les jours à 03:00 (heure de Paris)\n" +
-              "💡 Si la lumière est allumée, Palmi l'éteindra.\n" +
-              "😴 Puis Palmi t'enverra son message.\n\n" +
-              "☀️❄️ L'heure été/hiver est automatique."
+            "📛 Quel est le nom de cette automatisation ?"
           );
-
           return;
         }
+
+        // ======================================================
+        // COMMANDE /automations
+        // ======================================================
 
         if (
           text === "/automations"
         ) {
-          bot.sendMessage(
-            chatId,
-            "🤖 Automatisations Palmi\n\n" +
-              `🌙 Nuit : ${
-                automations.night
-                  ? "✅ Activée"
-                  : "❌ Désactivée"
-              }\n` +
-              "⏰ 03:00 — Europe/Paris\n" +
-              "☀️❄️ Passage été/hiver automatique."
-          );
+          let message = "🤖 Automatisations Palmi\n\n";
 
+          message += "⏰ Automatisations fixes :\n";
+          message += automations.night
+            ? "✅ 00:36 — Baisse luminosité à 30%\n"
+            : "❌ 00:36 — Désactivée\n";
+          message += automations.night
+            ? "✅ 02:00 — Éteint si allumé\n"
+            : "❌ 02:00 — Désactivée\n";
+          message += automations.night
+            ? "✅ 03:00 — Éteint si allumé\n"
+            : "❌ 03:00 — Désactivée\n";
+          message += automations.night
+            ? "✅ 19:15 — Allume à 100%\n\n"
+            : "❌ 19:15 — Désactivée\n\n";
+
+          if (automations.custom.length === 0) {
+            message += "📋 Automatisations personnalisées : aucune";
+          } else {
+            message += "📋 Automatisations personnalisées :\n";
+            for (const a of automations.custom) {
+              message += `• ${a.name} @ ${a.time}\n`;
+            }
+          }
+
+          message += "\n☀️❄️ Timezone : Europe/Paris (été/hiver automatique)";
+
+          await bot.sendMessage(chatId, message);
           return;
         }
 
-        if (
-          text === "/remove automation" ||
-          text === "/remove_automation"
-        ) {
-          automations.night =
-            false;
+        // ======================================================
+        // COMMANDE /remove
+        // ======================================================
 
+        if (
+          text === "/remove" ||
+          text === "/remove automation"
+        ) {
+          if (automations.custom.length === 0) {
+            await bot.sendMessage(
+              chatId,
+              "❌ Aucune automatisation personnalisée à supprimer."
+            );
+            return;
+          }
+
+          conversationState[chatId] = {
+            step: "remove_choice"
+          };
+
+          let message = "Quelle automatisation supprimer ?\n\n";
+          for (let i = 0; i < automations.custom.length; i++) {
+            const a = automations.custom[i];
+            message += `${i + 1}. ${a.name} @ ${a.time}\n`;
+          }
+          message += "\nRéponds par le numéro (ex: 1)";
+
+          await bot.sendMessage(chatId, message);
+          return;
+        }
+
+        // Gestion choix de suppression
+        if (conversationState[chatId]?.step === "remove_choice") {
+          const idx = parseInt(text, 10) - 1;
+          if (isNaN(idx) || idx < 0 || idx >= automations.custom.length) {
+            await bot.sendMessage(
+              chatId,
+              "❌ Numéro invalide. Réessaye."
+            );
+            return;
+          }
+
+          const removed = automations.custom.splice(idx, 1)[0];
           saveAutomations();
 
-          bot.sendMessage(
+          await bot.sendMessage(
             chatId,
-            "🌙 Automatisation nuit désactivée."
+            `✅ Automatisation supprimée !\n\n` +
+            `📛 ${removed.name} @ ${removed.time}`
           );
 
+          delete conversationState[chatId];
           return;
         }
 
@@ -1016,11 +1184,11 @@ if (TELEGRAM_TOKEN) {
               "• « couleur cyan »\n" +
               "• « couleur turquoise »\n\n" +
               "🤖 Automatisations :\n" +
-              "• /add automation\n" +
-              "• /automations\n" +
-              "• /remove automation\n\n" +
-              "🌙 Automatisation nuit : 03:00\n" +
-              "☀️❄️ Heure été/hiver automatique."
+              "• /add — Créer une automatisation\n" +
+              "• /automations — Lister toutes\n" +
+              "• /remove — Supprimer une\n\n" +
+              "🌙 Automatisations fixes : 00:36, 02:00, 03:00, 19:15\n" +
+              "☀️❄️ Timezone : Europe/Paris (été/hiver automatique)"
           );
 
           return;
@@ -1149,24 +1317,6 @@ if (TELEGRAM_TOKEN) {
           text.includes("monte") &&
           text.includes("luminosit")
         ) {
-          await setBrightness(20);
-
-          bot.sendMessage(
-            chatId,
-            "🔅 Luminosité baissée à 20%."
-          );
-
-          return;
-        }
-
-        // ======================================================
-        // MONTER LUMINOSITÉ
-        // ======================================================
-
-        if (
-          text.includes("monte") &&
-          text.includes("luminosit")
-        ) {
           await setBrightness(100);
 
           bot.sendMessage(
@@ -1195,87 +1345,25 @@ if (TELEGRAM_TOKEN) {
             return;
           }
         }
-
-        // ======================================================
-        // COULEUR HEX
-        // ======================================================
-
-        const hexMatch =
-          text.match(/#?([0-9a-f]{6})\b/);
-
-        if (
-          hexMatch &&
-          text.includes("couleur")
-        ) {
-          await setColor(hexMatch[1]);
-
-          bot.sendMessage(
-            chatId,
-            `🎨 Couleur changée en #${hexMatch[1]} !`
-          );
-
-          return;
-        }
-
-        // ======================================================
-        // FIN / AIDE
-        // ======================================================
-
-        if (
-          text === "/start" ||
-          text === "/help" ||
-          text === "aide"
-        ) {
-          bot.sendMessage(
-            chatId,
-            "👋 Salut ! Je suis Palmi Smart Home 🌴🤖\n\n" +
-            "💡 Commandes lumière :\n" +
-            "• allume ma lumière\n" +
-            "• éteins la lumière\n" +
-            "• lumière blanche\n" +
-            "• luminosité à 50\n" +
-            "• couleur rouge\n\n" +
-            "🤖 Automatisations :\n" +
-            "• /add automation\n" +
-            "• /automations\n" +
-            "• /remove automation\n\n" +
-            "🌙 Automatisation nuit : 03:00\n" +
-            "☀️❄️ Heure été/hiver automatique."
-          );
-
-          return;
-        }
-
       } catch (err) {
         console.error(
-          "❌ Erreur Telegram :",
-          err
+          "❌ Erreur traitement message Telegram:",
+          err.message
         );
 
         bot.sendMessage(
           chatId,
-          `❌ Erreur : ${err.message}`
+          "❌ Erreur : " + err.message
         );
       }
     }
   );
 
-  bot.on(
-    "polling_error",
-    (err) => {
-      console.error(
-        "❌ Telegram polling error :",
-        err.message
-      );
-    }
+  console.log(
+    "🤖 Bot Telegram Palmi prêt"
   );
 
-  console.log(
-    "🤖 Bot Telegram Palmi Smart Home démarré (polling)."
-  );
-
-} else {
-  console.log(
-    "TELEGRAM_BOT_TOKEN absent, bot Telegram désactivé."
-  );
+  // Charger automatisations au démarrage
+  loadAutomations();
 }
+
