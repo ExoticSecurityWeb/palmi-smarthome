@@ -1908,7 +1908,9 @@ if (TELEGRAM_TOKEN) {
               "• /cast volume_plus\n" +
               "• /cast volume_moins\n" +
               "• /cast muet\n" +
-              "• /cast youtube <url ou id>\n\n" +
+              "• /cast youtube <url ou id>\n" +
+              "   Exemple : /cast youtube https://youtu.be/h4T2X2x7RFU\n" +
+              "   Colle simplement le lien YouTube (partagé depuis l'app ou copié dans la barre d'adresse), les paramètres en trop (?si=...) sont ignorés automatiquement.\n\n" +
               "🤖 Automatisations :\n" +
               "• /add — créer une automatisation\n" +
               "• /automations — voir les automatisations\n" +
