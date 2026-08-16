@@ -663,7 +663,7 @@ const TV_BRIDGE_TOKEN = process.env.PALMI_TV_BRIDGE_TOKEN;
 let tvGatewaySocket = null;
 const pendingTvCommands = new Map();
 
-const wss = new WebSocketServer({ server, path: "/tv-bridge" });
+const wss = new WebSocketServer({ noServer: true });
 
 wss.on("connection", (ws, req) => {
   const token = new URL(req.url, "http://localhost").searchParams.get("token");
@@ -734,7 +734,7 @@ const CAST_BRIDGE_TOKEN = process.env.PALMI_CAST_BRIDGE_TOKEN;
 let castGatewaySocket = null;
 const pendingCastCommands = new Map();
 
-const wssCast = new WebSocketServer({ server, path: "/cast-bridge" });
+const wssCast = new WebSocketServer({ noServer: true });
 
 wssCast.on("connection", (ws, req) => {
   const token = new URL(req.url, "http://localhost").searchParams.get("token");
@@ -771,6 +771,24 @@ wssCast.on("connection", (ws, req) => {
   ws.on("error", (err) => {
     console.error("Erreur WebSocket Cast Bridge :", err.message);
   });
+});
+
+// Routeur unique pour les deux WebSocket (TV + Cast), evite les conflits
+// entre plusieurs WebSocketServer attaches au meme serveur HTTP.
+server.on("upgrade", (req, socket, head) => {
+  const { pathname } = new URL(req.url, "http://localhost");
+
+  if (pathname === "/tv-bridge") {
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit("connection", ws, req);
+    });
+  } else if (pathname === "/cast-bridge") {
+    wssCast.handleUpgrade(req, socket, head, (ws) => {
+      wssCast.emit("connection", ws, req);
+    });
+  } else {
+    socket.destroy();
+  }
 });
 
 const VALID_CAST_ACTIONS = ["play", "pause", "stop", "volume_up", "volume_down", "mute", "youtube"];
