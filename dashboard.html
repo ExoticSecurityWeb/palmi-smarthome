@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Palmi Smart Home</title>
 
 <style>
@@ -179,7 +180,7 @@ button:active {
 }
 
 button:disabled {
-    opacity: .45;
+    opacity: .4;
     cursor: not-allowed;
 }
 
@@ -208,305 +209,15 @@ button:disabled {
 .temperature {
     font-size: 31px;
     font-weight: 700;
-}
-
-.accent {
-    color: var(--accent);
-}
-
-.weather-main {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.weather-icon {
-    width: 70px;
-    height: 70px;
-}
-
-.weather-description {
-    text-transform: capitalize;
-    color: var(--muted);
-}
-
-.weather-details {
-    display: grid;
-    grid-template-columns: repeat(3,1fr);
-    gap: 10px;
-    margin-top: 18px;
-}
-
-.weather-detail {
-    padding: 12px;
-    background: rgba(255,255,255,.055);
-    border-radius: 14px;
-    text-align: center;
-}
-
-.footer {
-    text-align: center;
-    color: var(--muted);
-    font-size: 13px;
-    margin-top: 23px;
-}
-
-@media (max-width:700px) {
-    .container {
-        padding: 18px 13px 30px;
-    }
-
-    .header {
-        align-items: flex-start;
-        gap: 12px;
-    }
-
-    .status {
-        white-space: nowrap;
-    }
-
-    .grid {
-        grid-template-columns: 1fr;
-    }
-
-    .card-wide {
-        grid-column: auto;
-    }
-
-    .card {
-        border-radius: 20px;
-        padding: 18px;
-    }
-
-    .weather-details {
-        grid-template-columns: 1fr;
-    }
-}
-</style>
-</head>
-
-<body>
-
-<div class="background"></div>
-<div class="overlay"></div>
-
-<main class="container">
-
-<header class="header">
-    <div>
-        <div class="logo">🌴 Palmi Smart Home</div>
-        <div class="subtitle">Ta maison, simplement connectée.</div>
-    </div>
-
-    <div class="status">
-        <span class="status-dot" id="headerStatusDot"></span>
-        <span id="headerStatusText">Vérification...</span>
-    </div>
-</header>
-
-<section class="grid">
-
-<article class="card">
-<div class="card-title">
-    <h2>💡 Lumières</h2>
-    <span class="card-icon">✨</span>
-</div>
-
-<div class="rows">
-
-<div class="row">
-    <div>
-        <div class="row-title">Chambre</div>
-        <div class="row-subtitle" id="lightState">Éteinte</div>
-    </div>
-
-    <button id="lightButton" onclick="toggleLight()">⏻</button>
-</div>
-
-<div class="row">
-    <div>
-        <div class="row-title">Luminosité</div>
-        <div class="row-subtitle">Réglage de la lumière</div>
-    </div>
-
-    <div>
-        <button onclick="changeBrightness(-10)">−</button>
-        <span id="brightness" class="accent">50 %</span>
-        <button onclick="changeBrightness(10)">+</button>
-    </div>
-</div>
-
-</div>
-</article>
-
-<article class="card">
-<div class="card-title">
-    <h2>📺 TV 1</h2>
-    <span class="row-subtitle">Google TV Stick · A10</span>
-</div>
-
-<div class="remote">
-
-<button class="empty">.</button>
-<button onclick="tv(1,'up')">▲</button>
-<button class="empty">.</button>
-
-<button onclick="tv(1,'left')">◀</button>
-<button class="button-active" onclick="tv(1,'ok')">OK</button>
-<button onclick="tv(1,'right')">▶</button>
-
-<button class="empty">.</button>
-<button onclick="tv(1,'down')">▼</button>
-<button class="empty">.</button>
-
-<button onclick="tv(1,'volume_down')">🔉</button>
-<button onclick="tv(1,'mute')">🔇</button>
-<button onclick="tv(1,'volume_up')">🔊</button>
-
-<button onclick="tv(1,'back')">↩️</button>
-<button onclick="tv(1,'home')">🏠</button>
-<button onclick="tv(1,'power')">⏻</button>
-
-</div>
-
-<div class="row-subtitle" style="margin-top:12px;text-align:center;">
-    Commandes envoyées à l'A10 via le Worker
-</div>
-</article>
-
-<article class="card">
-<div class="card-title">
-    <h2>📺 TV 2</h2>
-    <span class="row-subtitle">Chromecast</span>
-</div>
-
-<div class="remote">
-
-<button class="empty">.</button>
-<button disabled>▲</button>
-<button class="empty">.</button>
-
-<button disabled>◀</button>
-<button disabled>OK</button>
-<button disabled>▶</button>
-
-<button class="empty">.</button>
-<button disabled>▼</button>
-<button class="empty">.</button>
-
-<button disabled>🔉</button>
-<button disabled>🔇</button>
-<button disabled>🔊</button>
-
-</div>
-
-<div class="row-subtitle" style="margin-top:12px;text-align:center;">
-    TV 2 non connectée
-</div>
-</article>
-
-<article class="card">
-<div class="card-title">
-    <h2>🌦️ Météo</h2>
-    <span class="row-subtitle">Heugas</span>
-</div>
-
-<div class="weather-main">
-
-<img id="weatherIcon" class="weather-icon" alt="Météo">
-
-<div>
-<div class="temperature">
-    <span id="weatherTemp">--</span>
-    <span class="accent">°C</span>
-</div>
-
-<div id="weatherDescription" class="weather-description">
-    Chargement...
-</div>
-</div>
-
-</div>
-
-<div class="weather-details">
-
-<div class="weather-detail">
-    💧
-    <br>
-    <span id="weatherHumidity">--</span> %
-</div>
-
-<div class="weather-detail">
-    💨
-    <br>
-    <span id="weatherWind">--</span> km/h
-</div>
-
-<div class="weather-detail">
-    🌡️
-    <br>
-    Ressenti <span id="weatherFeels">--</span> °C
-</div>
-
-</div>
-</article>
-<article class="card">
-
-<div class="card-title">
-    <h2>🤖 Palmi</h2>
-    <span class="status-dot"></span>
-</div>
-
-<div class="subtitle">
-    Assistant domotique prêt.
-</div>
-
-<br>
-
-<button onclick="loadWeather()">
-    ↻ Actualiser
-</button>
-
-</article>
-
-<article class="card card-wide">
-
-<div class="card-title">
-    <h2>🏠 Maison</h2>
-    <span class="row-subtitle">Dashboard V1</span>
-</div>
-
-<div class="row">
-
-<div>
-    <div class="row-title">État général</div>
-    <div class="row-subtitle">Palmi Smart Home</div>
-</div>
-
-<span class="accent" id="generalStatusText">
-    ● Vérification...
-</span>
-
-</div>
-</article>
-
-</section>
-
-<div class="footer">
-    Palmi Smart Home · 🤎 Interface marron fumé
-</div>
-
-</main>
-
 <script>
 
 let lightOn = false;
 let brightness = 50;
 
 
-// ============================================================
-// 💡 LUMIÈRE
-// ============================================================
+/* ============================================================
+   💡 LUMIÈRE
+   ============================================================ */
 
 async function loadLightStatus() {
 
@@ -522,16 +233,21 @@ async function loadLightStatus() {
             return;
         }
 
-        lightOn = Boolean(data.on);
+        lightOn =
+            Boolean(data.on);
 
-        if (typeof data.brightness === "number") {
-            brightness = data.brightness;
+        if (
+            typeof data.brightness === "number"
+        ) {
+            brightness =
+                data.brightness;
         }
 
         updateLight();
 
-        document.getElementById("brightness")
-            .textContent =
+        document.getElementById(
+            "brightness"
+        ).textContent =
             brightness + " %";
 
     } catch (error) {
@@ -540,7 +256,9 @@ async function loadLightStatus() {
             "Erreur lumière :",
             error
         );
+
     }
+
 }
 
 
@@ -559,7 +277,10 @@ async function toggleLight() {
         const data =
             await response.json();
 
-        if (!response.ok || data.success === false) {
+        if (
+            !response.ok ||
+            data.success === false
+        ) {
 
             alert(
                 "Impossible de contrôler la lumière."
@@ -568,7 +289,8 @@ async function toggleLight() {
             return;
         }
 
-        lightOn = !lightOn;
+        lightOn =
+            !lightOn;
 
         updateLight();
 
@@ -577,7 +299,9 @@ async function toggleLight() {
         alert(
             "Erreur de connexion au serveur."
         );
+
     }
+
 }
 
 
@@ -593,24 +317,16 @@ function updateLight() {
             "lightState"
         );
 
-    if (lightOn) {
+    button.classList.toggle(
+        "button-active",
+        lightOn
+    );
 
-        button.classList.add(
-            "button-active"
-        );
+    state.textContent =
+        lightOn
+            ? "Allumée"
+            : "Éteinte";
 
-        state.textContent =
-            "Allumée";
-
-    } else {
-
-        button.classList.remove(
-            "button-active"
-        );
-
-        state.textContent =
-            "Éteinte";
-    }
 }
 
 
@@ -653,7 +369,6 @@ async function changeBrightness(amount) {
             !response.ok ||
             data.success === false
         ) {
-
             return;
         }
 
@@ -671,14 +386,16 @@ async function changeBrightness(amount) {
             "Erreur luminosité :",
             error
         );
+
     }
+
 }
 
 
-// ============================================================
-// 📺 TV 1
-// Dashboard → dashboard.js → Worker → KV → A10 → TV
-// ============================================================
+/* ============================================================
+   📺 TV
+   Dashboard → dashboard.js → Worker → KV → A10
+   ============================================================ */
 
 async function tv(number, action) {
 
@@ -692,17 +409,7 @@ async function tv(number, action) {
             await fetch(
                 `/tv/${number}/${action}`,
                 {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            count: 1
-                        })
+                    method: "POST"
                 }
             );
 
@@ -723,23 +430,25 @@ async function tv(number, action) {
         }
 
         console.log(
-            "📺 TV 1 :",
+            "📺 TV 1 commande envoyée :",
             action
         );
 
     } catch (error) {
 
         console.error(
-            "Erreur TV :",
+            "Erreur commande TV :",
             error
         );
+
     }
+
 }
 
 
-// ============================================================
-// 🌦️ MÉTÉO
-// ============================================================
+/* ============================================================
+   🌦️ MÉTÉO
+   ============================================================ */
 
 async function loadWeather() {
 
@@ -768,6 +477,7 @@ async function loadWeather() {
                 data.error ||
                 "Erreur météo"
             );
+
         }
 
         document.getElementById(
@@ -799,6 +509,7 @@ async function loadWeather() {
                 "weatherIcon"
             ).src =
                 `https://openweathermap.org/img/wn/${data.icon}@2x.png`;
+
         }
 
     } catch (error) {
@@ -810,13 +521,15 @@ async function loadWeather() {
 
         description.textContent =
             "Météo indisponible";
+
     }
+
 }
 
 
-// ============================================================
-// 🏠 ÉTAT DU SYSTÈME
-// ============================================================
+/* ============================================================
+   🏠 ÉTAT DU SYSTÈME
+   ============================================================ */
 
 async function checkSystemStatus() {
 
@@ -853,6 +566,7 @@ async function checkSystemStatus() {
             throw new Error(
                 "Système indisponible"
             );
+
         }
 
         dot.style.background =
@@ -880,26 +594,42 @@ async function checkSystemStatus() {
 
         generalText.style.color =
             "#ef4444";
+
     }
+
 }
 
 
-// ============================================================
-// 🚀 DÉMARRAGE
-// ============================================================
+/* ============================================================
+   🚀 DÉMARRAGE
+   ============================================================ */
 
 loadWeather();
+
 loadLightStatus();
+
 checkSystemStatus();
 
-setInterval(
-    checkSystemStatus,
-    30000
-);
+
+/*
+   Mise à jour de l'état lumière
+   toutes les 10 secondes.
+*/
 
 setInterval(
     loadLightStatus,
     10000
+);
+
+
+/*
+   Vérification du système
+   toutes les 30 secondes.
+*/
+
+setInterval(
+    checkSystemStatus,
+    30000
 );
 
 </script>
