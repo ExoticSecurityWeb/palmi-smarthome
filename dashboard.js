@@ -3,14 +3,14 @@ const path = require("path");
 
 const app = express();
 
-const PORT = 3002;
+const PORT = process.env.PORT || 8080;
 
 app.use(express.static(__dirname));
 
 app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "dashboard.html"));
+  res.sendFile(path.join(__dirname, "dashboard.html"));
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🌴 Palmi Dashboard lancé sur le port ${PORT}`);
+  console.log(`🌴 Palmi Dashboard lancé sur le port ${PORT}`);
 });
