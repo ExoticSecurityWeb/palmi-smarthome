@@ -491,6 +491,36 @@ app.get(
 );
 
 app.get(
+  "/light/status",
+  async (req, res) => {
+    try {
+      const data = await getLightState();
+
+      if (!data.result) {
+        return res.status(500).json({ success: false, error: "Reponse Tuya invalide" });
+      }
+
+      const dps = {};
+      for (const item of data.result) {
+        dps[item.code] = item.value;
+      }
+
+      const on = dps.switch_led === true;
+      const brightRaw = typeof dps.bright_value === "number" ? dps.bright_value : 0;
+      const brightness = Math.round((brightRaw / 1000) * 100);
+
+      res.json({
+        success: true,
+        on,
+        brightness,
+      });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+app.get(
   "/light/on",
   async (req, res) => {
     try {
