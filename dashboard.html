@@ -295,8 +295,8 @@ button:active {
     </div>
 
     <div class="status">
-        <span class="status-dot"></span>
-        Système en ligne
+        <span class="status-dot" id="headerStatusDot"></span>
+        <span id="headerStatusText">Vérification...</span>
     </div>
 </header>
 
@@ -495,7 +495,7 @@ button:active {
     <div class="row-subtitle">Palmi Smart Home</div>
 </div>
 
-<span class="accent">● En ligne</span>
+<span class="accent" id="generalStatusText">● Vérification...</span>
 
 </div>
 
@@ -538,6 +538,36 @@ async function loadLightStatus() {
 
     } catch (error) {
         console.log("Erreur chargement etat lumiere", error);
+    }
+}
+
+
+async function checkSystemStatus() {
+
+    const dot = document.getElementById("headerStatusDot");
+    const headerText = document.getElementById("headerStatusText");
+    const generalText = document.getElementById("generalStatusText");
+
+    try {
+
+        const response = await fetch("/light/status");
+        const data = await response.json();
+
+        if (data.success === false) {
+            throw new Error("reponse invalide");
+        }
+
+        dot.style.background = "#4ade80";
+        headerText.textContent = "Système en ligne";
+        generalText.textContent = "● En ligne";
+        generalText.style.color = "#4ade80";
+
+    } catch (error) {
+
+        dot.style.background = "#ef4444";
+        headerText.textContent = "Système hors ligne";
+        generalText.textContent = "● Hors ligne";
+        generalText.style.color = "#ef4444";
     }
 }
 
@@ -703,6 +733,8 @@ loadWeather();
 
 
 loadLightStatus();
+checkSystemStatus();
+setInterval(checkSystemStatus, 30000); // re-vérifie toutes les 30s
 
 </script>
 
