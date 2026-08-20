@@ -9,15 +9,6 @@ const path = require("path");
 const { WebSocketServer } = require("ws");
 const http = require("http");
 
-// ============================================================
-// TV BRIDGE HTTP — A10 / ZeroTier
-// ============================================================
-
-const {
-  tvCommand,
-  tvStatus
-} = require("./tv-bridge.cjs");
-
 const app = express();
 app.use(express.json());
 
@@ -668,7 +659,7 @@ server.listen(PORT, () => {
 });
 
 // ============================================================
-// PONT TV HTTP — A10 / ZeroTier
+// PONT TV — WebSocket Railway <-> Termux (A10)
 // ============================================================
 
 const VALID_TV_ACTIONS = [
@@ -685,19 +676,70 @@ const VALID_TV_ACTIONS = [
   "power"
 ];
 
-async function sendTvCommand(action, count = 1) {
-  if (
-    !VALID_TV_ACTIONS.includes(action)
-  ) {
-    throw new Error(
-      `Commande TV invalide : ${action}`
-    );
+const TV_BRIDGE_TOKEN = process.env.PALMI_TV_BRIDGE_TOKEN;
+let tvGatewaySocket = null;
+const pendingTvCommands = new Map();
+
+const wssTv = new WebSocketServer({ noServer: true });
+
+wssTv.on("connection", (ws, req) => {
+  const token = new URL(req.url, "http://localhost").searchParams.get("token");
+
+  if (!TV_BRIDGE_TOKEN || token !== TV_BRIDGE_TOKEN) {
+    console.log("Connexion TV Bridge refusee (token invalide).");
+    ws.close(4001, "Token invalide");
+    return;
   }
 
-  return tvCommand(
-    action,
-    count
-  );
+  console.log("TV Bridge connectee (Termux).");
+  tvGatewaySocket = ws;
+
+  ws.on("message", (raw) => {
+    try {
+      const data = JSON.parse(raw.toString());
+      if (data.type === "tv_result" && data.id && pendingTvCommands.has(data.id)) {
+        const pending = pendingTvCommands.get(data.id);
+        clearTimeout(pending.timeout);
+        pendingTvCommands.delete(data.id);
+        if (data.success) pending.resolve(data);
+        else pending.reject(new Error(data.error || "Erreur TV inconnue"));
+      }
+    } catch (err) {
+      console.error("Message TV Bridge invalide :", err.message);
+    }
+  });
+
+  ws.on("close", () => {
+    console.log("TV Bridge deconnectee (Termux).");
+    if (tvGatewaySocket === ws) tvGatewaySocket = null;
+  });
+
+  ws.on("error", (err) => {
+    console.error("Erreur WebSocket TV Bridge :", err.message);
+  });
+});
+
+function sendTvCommand(action, count = 1) {
+  return new Promise((resolve, reject) => {
+    if (!VALID_TV_ACTIONS.includes(action)) {
+      return reject(new Error(`Commande TV invalide : ${action}`));
+    }
+
+    if (!tvGatewaySocket || tvGatewaySocket.readyState !== 1) {
+      return reject(new Error("La TV Bridge (Termux) n'est pas connectee."));
+    }
+
+    const id = Date.now().toString() + Math.random().toString(36).slice(2, 7);
+    const payload = { type: "tv_command", id, action, count };
+
+    const timeout = setTimeout(() => {
+      pendingTvCommands.delete(id);
+      reject(new Error("Timeout : pas de reponse de la TV Bridge."));
+    }, 10000);
+
+    pendingTvCommands.set(id, { resolve, reject, timeout });
+    tvGatewaySocket.send(JSON.stringify(payload));
+  });
 }
 
 // ============================================================
@@ -855,6 +897,22 @@ server.on(
         head,
         (ws) => {
           wssCast.emit(
+            "connection",
+            ws,
+            req
+          );
+        }
+      );
+    } else if (
+      pathname ===
+      "/tv-bridge"
+    ) {
+      wssTv.handleUpgrade(
+        req,
+        socket,
+        head,
+        (ws) => {
+          wssTv.emit(
             "connection",
             ws,
             req
