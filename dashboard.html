@@ -516,6 +516,32 @@ let lightOn = false;
 let brightness = 50;
 
 
+async function loadLightStatus() {
+
+    try {
+
+        const response = await fetch("/light/status");
+        const data = await response.json();
+
+        if (data.success === false) {
+            console.log("Impossible de charger l'etat de la lumiere.");
+            return;
+        }
+
+        lightOn = data.on;
+        brightness = data.brightness;
+
+        updateLight();
+
+        document.getElementById("brightness")
+            .textContent = brightness + " %";
+
+    } catch (error) {
+        console.log("Erreur chargement etat lumiere", error);
+    }
+}
+
+
 async function toggleLight() {
 
     const endpoint =
@@ -674,6 +700,9 @@ async function loadWeather() {
 
 
 loadWeather();
+
+
+loadLightStatus();
 
 </script>
 
