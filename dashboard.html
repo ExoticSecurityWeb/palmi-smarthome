@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Palmi Smart Home</title>
 
 <style>
@@ -179,6 +178,12 @@ button:active {
     transform: scale(.96);
 }
 
+button:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    transform: none;
+}
+
 .button-active {
     color: #ffe3bd;
     background: rgba(215,165,111,.18);
@@ -186,166 +191,7 @@ button:active {
 }
 
 .remote {
-    display: grid;
-    grid-template-columns: repeat(3,1fr);
-    gap: 9px;
-    max-width: 360px;
-    margin: auto;
-}
-
-.remote button {
-    height: 48px;
-}
-
-.empty {
-    visibility: hidden;
-}
-
-.temperature {
-    font-size: 31px;
-    font-weight: 700;
-}
-
-.accent {
-    color: var(--accent);
-}
-
-.weather-main {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.weather-icon {
-    width: 70px;
-    height: 70px;
-}
-
-.weather-description {
-    text-transform: capitalize;
-    color: var(--muted);
-}
-
-.weather-details {
-    display: grid;
-    grid-template-columns: repeat(3,1fr);
-    gap: 10px;
-    margin-top: 18px;
-}
-
-.weather-detail {
-    padding: 12px;
-    background: rgba(255,255,255,.055);
-    border-radius: 14px;
-    text-align: center;
-}
-
-.footer {
-    text-align: center;
-    color: var(--muted);
-    font-size: 13px;
-    margin-top: 23px;
-}
-
-@media (max-width:700px) {
-    .container {
-        padding: 18px 13px 30px;
-    }
-
-    .header {
-        align-items: flex-start;
-        gap: 12px;
-    }
-
-    .status {
-        white-space: nowrap;
-    }
-
-    .grid {
-        grid-template-columns: 1fr;
-    }
-
-    .card-wide {
-        grid-column: auto;
-    }
-
-    .card {
-        border-radius: 20px;
-        padding: 18px;
-    }
-
-    .weather-details {
-        grid-template-columns: 1fr;
-    }
-}
-</style>
-</head>
-
-<body>
-
-<div class="background"></div>
-<div class="overlay"></div>
-
-<main class="container">
-
-<header class="header">
-    <div>
-        <div class="logo">🌴 Palmi Smart Home</div>
-        <div class="subtitle">Ta maison, simplement connectée.</div>
-    </div>
-
-    <div class="status">
-        <span class="status-dot" id="headerStatusDot"></span>
-        <span id="headerStatusText">Vérification...</span>
-    </div>
-</header>
-
-<section class="grid">
-
-<!-- 💡 LUMIÈRE -->
-
-<article class="card">
-
-<div class="card-title">
-    <h2>💡 Lumières</h2>
-    <span class="card-icon">✨</span>
-</div>
-
-<div class="rows">
-
-<div class="row">
-    <div>
-        <div class="row-title">Chambre</div>
-        <div class="row-subtitle" id="lightState">Éteinte</div>
-    </div>
-
-    <button id="lightButton" onclick="toggleLight()">⏻</button>
-</div>
-
-<div class="row">
-
-<div>
-    <div class="row-title">Luminosité</div>
-    <div class="row-subtitle">Réglage de la lumière</div>
-</div>
-
-<div>
-    <button onclick="changeBrightness(-10)">−</button>
-
-    <span id="brightness" class="accent">50 %</span>
-
-    <button onclick="changeBrightness(10)">+</button>
-</div>
-
-</div>
-
-</div>
-</article>
-
-
-<!-- 📺 TV 1 -->
-
-<article class="card">
+   <article class="card">
 
 <div class="card-title">
     <h2>📺 TV 1</h2>
@@ -370,11 +216,13 @@ button:active {
 <button onclick="tv(1,'mute')">🔇</button>
 <button onclick="tv(1,'volume_up')">🔊</button>
 
+<button onclick="tv(1,'back')">↩️</button>
+<button onclick="tv(1,'home')">🏠</button>
+<button onclick="tv(1,'power')">⏻</button>
+
 </div>
 </article>
 
-
-<!-- 📺 TV 2 -->
 
 <article class="card">
 
@@ -386,26 +234,33 @@ button:active {
 <div class="remote">
 
 <button class="empty">.</button>
-<button onclick="tv(2,'up')">▲</button>
+<button disabled>▲</button>
 <button class="empty">.</button>
 
-<button onclick="tv(2,'left')">◀</button>
-<button class="button-active" onclick="tv(2,'ok')">OK</button>
-<button onclick="tv(2,'right')">▶</button>
+<button disabled>◀</button>
+<button disabled>OK</button>
+<button disabled>▶</button>
 
 <button class="empty">.</button>
-<button onclick="tv(2,'down')">▼</button>
+<button disabled>▼</button>
 <button class="empty">.</button>
 
-<button onclick="tv(2,'volume_down')">🔉</button>
-<button onclick="tv(2,'mute')">🔇</button>
-<button onclick="tv(2,'volume_up')">🔊</button>
+<button disabled>🔉</button>
+<button disabled>🔇</button>
+<button disabled>🔊</button>
+
+<button disabled>↩️</button>
+<button disabled>🏠</button>
+<button disabled>⏻</button>
 
 </div>
+
+<div class="row-subtitle" style="margin-top:12px;text-align:center;">
+    TV 2 non connectée
+</div>
+
 </article>
 
-
-<!-- 🌦️ MÉTÉO -->
 
 <article class="card">
 
@@ -457,8 +312,6 @@ button:active {
 </article>
 
 
-<!-- 🤖 PALMI -->
-
 <article class="card">
 
 <div class="card-title">
@@ -479,8 +332,6 @@ button:active {
 </article>
 
 
-<!-- 🏠 MAISON -->
-
 <article class="card card-wide">
 
 <div class="card-title">
@@ -495,7 +346,9 @@ button:active {
     <div class="row-subtitle">Palmi Smart Home</div>
 </div>
 
-<span class="accent" id="generalStatusText">● Vérification...</span>
+<span class="accent" id="generalStatusText">
+    ● Vérification...
+</span>
 
 </div>
 
@@ -509,10 +362,7 @@ button:active {
 
 </main>
 
-
-<script>
-
-let lightOn = false;
+<script>let lightOn = false;
 let brightness = 50;
 
 
@@ -520,16 +370,21 @@ async function loadLightStatus() {
 
     try {
 
-        const response = await fetch("/light/status");
-        const data = await response.json();
+        const response =
+            await fetch("/light/status");
 
-        if (data.success === false) {
-            console.log("Impossible de charger l'etat de la lumiere.");
+        const data =
+            await response.json();
+
+        if (!response.ok || data.success === false) {
             return;
         }
 
-        lightOn = data.on;
-        brightness = data.brightness;
+        lightOn = Boolean(data.on);
+
+        if (typeof data.brightness === "number") {
+            brightness = data.brightness;
+        }
 
         updateLight();
 
@@ -537,24 +392,36 @@ async function loadLightStatus() {
             .textContent = brightness + " %";
 
     } catch (error) {
-        console.log("Erreur chargement etat lumiere", error);
+
+        console.log(
+            "Erreur chargement lumière",
+            error
+        );
     }
 }
 
 
 async function checkSystemStatus() {
 
-    const dot = document.getElementById("headerStatusDot");
-    const headerText = document.getElementById("headerStatusText");
-    const generalText = document.getElementById("generalStatusText");
+    const dot =
+        document.getElementById("headerStatusDot");
+
+    const headerText =
+        document.getElementById("headerStatusText");
+
+    const generalText =
+        document.getElementById("generalStatusText");
 
     try {
 
-        const response = await fetch("/light/status");
-        const data = await response.json();
+        const response =
+            await fetch("/light/status");
 
-        if (data.success === false) {
-            throw new Error("reponse invalide");
+        const data =
+            await response.json();
+
+        if (!response.ok || data.success === false) {
+            throw new Error("Réponse invalide");
         }
 
         dot.style.background = "#4ade80";
@@ -581,11 +448,18 @@ async function toggleLight() {
 
     try {
 
-        const response = await fetch(endpoint);
-        const data = await response.json();
+        const response =
+            await fetch(endpoint);
 
-        if (data.success === false) {
-            alert("Impossible de contrôler la lumière.");
+        const data =
+            await response.json();
+
+        if (!response.ok || data.success === false) {
+
+            alert(
+                "Impossible de contrôler la lumière."
+            );
+
             return;
         }
 
@@ -593,7 +467,10 @@ async function toggleLight() {
         updateLight();
 
     } catch (error) {
-        alert("Erreur de connexion au serveur.");
+
+        alert(
+            "Erreur de connexion au serveur."
+        );
     }
 }
 
@@ -621,6 +498,8 @@ function updateLight() {
 
 async function changeBrightness(amount) {
 
+    const oldBrightness = brightness;
+
     brightness =
         Math.max(
             0,
@@ -635,52 +514,110 @@ async function changeBrightness(amount) {
 
     try {
 
-        await fetch(
-            "/light/brightness",
-            {
-                method: "POST",
+        const response =
+            await fetch(
+                "/light/brightness",
+                {
+                    method: "POST",
 
-                headers: {
-                    "Content-Type": "application/json"
-                },
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
 
-                body: JSON.stringify({
-                    brightness
-                })
-            }
-        );
+                    body:
+                        JSON.stringify({
+                            brightness
+                        })
+                }
+            );
 
-    } catch (error) {
-        console.log("Erreur luminosité", error);
-    }
-}
+        const data =
+            await response.json();
 
+        if (!response.ok || data.success === false) {
 
-async function tv(number, action) {
+            brightness = oldBrightness;
 
-    try {
-
-        await fetch(
-            `/tv/${number}/${action}`,
-            {
-                method: "POST"
-            }
-        );
+            document.getElementById("brightness")
+                .textContent =
+                brightness + " %";
+        }
 
     } catch (error) {
+
+        brightness = oldBrightness;
+
+        document.getElementById("brightness")
+            .textContent =
+            brightness + " %";
 
         console.log(
-            `TV ${number} indisponible`,
+            "Erreur luminosité",
             error
         );
     }
 }
 
 
-async function loadWeather() {
+// ============================================================
+// 📺 TV
+// Dashboard → dashboard.js → Worker → KV → A10 → TV Stick
+// ============================================================
+
+async function tv(number, action, count = 1) {
+
+    try {
+
+        const response =
+            await fetch(
+                `/tv/${number}/${action}`,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+                            count
+                        })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || data.success === false) {
+
+            console.error(
+                `TV ${number} → ${action}`,
+                data
+            );
+
+            return;
+        }
+
+        console.log(
+            `📺 TV ${number} → ${action} x${count}`,
+            data
+        );
+
+    } catch (error) {
+
+        console.error(
+            `Erreur TV ${number} → ${action}`,
+            error
+        );
+    }
+}async function loadWeather() {
 
     const description =
-        document.getElementById("weatherDescription");
+        document.getElementById(
+            "weatherDescription"
+        );
 
     description.textContent =
         "Chargement...";
@@ -693,35 +630,51 @@ async function loadWeather() {
         const data =
             await response.json();
 
-        if (!data.success) {
-            throw new Error(data.error);
+        if (!response.ok || !data.success) {
+            throw new Error(
+                data.error || "Erreur météo"
+            );
         }
 
-        document.getElementById("weatherTemp")
-            .textContent = data.temperature;
+        document.getElementById(
+            "weatherTemp"
+        ).textContent =
+            data.temperature;
 
-        document.getElementById("weatherFeels")
-            .textContent = data.feelsLike;
+        document.getElementById(
+            "weatherFeels"
+        ).textContent =
+            data.feelsLike;
 
-        document.getElementById("weatherHumidity")
-            .textContent = data.humidity;
+        document.getElementById(
+            "weatherHumidity"
+        ).textContent =
+            data.humidity;
 
-        document.getElementById("weatherWind")
-            .textContent = data.wind;
+        document.getElementById(
+            "weatherWind"
+        ).textContent =
+            data.wind;
 
-        document.getElementById("weatherDescription")
-            .textContent = data.description;
+        document.getElementById(
+            "weatherDescription"
+        ).textContent =
+            data.description;
 
         if (data.icon) {
 
-            document.getElementById("weatherIcon")
-                .src =
+            document.getElementById(
+                "weatherIcon"
+            ).src =
                 `https://openweathermap.org/img/wn/${data.icon}@2x.png`;
         }
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "Erreur météo",
+            error
+        );
 
         description.textContent =
             "Météo indisponible";
@@ -730,11 +683,13 @@ async function loadWeather() {
 
 
 loadWeather();
-
-
 loadLightStatus();
 checkSystemStatus();
-setInterval(checkSystemStatus, 30000); // re-vérifie toutes les 30s
+
+setInterval(
+    checkSystemStatus,
+    30000
+);
 
 </script>
 
