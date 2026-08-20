@@ -9,6 +9,15 @@ const path = require("path");
 const { WebSocketServer } = require("ws");
 const http = require("http");
 
+// ============================================================
+// TV BRIDGE HTTP — A10 / ZeroTier
+// ============================================================
+
+const {
+  tvCommand,
+  tvStatus
+} = require("./tv-bridge.cjs");
+
 const app = express();
 app.use(express.json());
 
@@ -651,168 +660,285 @@ app.get(
 
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
+
 server.listen(PORT, () => {
-  console.log(`Palmi Smart Home lancé sur le port ${PORT}`);
+  console.log(
+    `Palmi Smart Home lancé sur le port ${PORT}`
+  );
 });
 
 // ============================================================
-// PONT TV — WebSocket Railway <-> Termux
+// PONT TV HTTP — A10 / ZeroTier
 // ============================================================
-
-const TV_BRIDGE_TOKEN = process.env.PALMI_TV_BRIDGE_TOKEN;
-let tvGatewaySocket = null;
-const pendingTvCommands = new Map();
-
-const wss = new WebSocketServer({ noServer: true });
-
-wss.on("connection", (ws, req) => {
-  const token = new URL(req.url, "http://localhost").searchParams.get("token");
-
-  if (!TV_BRIDGE_TOKEN || token !== TV_BRIDGE_TOKEN) {
-    console.log("Connexion TV Bridge refusee (token invalide).");
-    ws.close(4001, "Token invalide");
-    return;
-  }
-
-  console.log("TV Bridge connectee (Termux).");
-  tvGatewaySocket = ws;
-
-  ws.on("message", (raw) => {
-    try {
-      const data = JSON.parse(raw.toString());
-      if (data.type === "tv_result" && data.id && pendingTvCommands.has(data.id)) {
-        const pending = pendingTvCommands.get(data.id);
-        clearTimeout(pending.timeout);
-        pendingTvCommands.delete(data.id);
-        if (data.success) pending.resolve(data);
-        else pending.reject(new Error(data.error || "Erreur TV inconnue"));
-      }
-    } catch (err) {
-      console.error("Message TV Bridge invalide :", err.message);
-    }
-  });
-
-  ws.on("close", () => {
-    console.log("TV Bridge deconnectee (Termux).");
-    if (tvGatewaySocket === ws) tvGatewaySocket = null;
-  });
-
-  ws.on("error", (err) => {
-    console.error("Erreur WebSocket TV Bridge :", err.message);
-  });
-});
 
 const VALID_TV_ACTIONS = [
-  "up", "down", "left", "right", "ok", "back", "home",
-  "volume_up", "volume_down", "mute", "power",
+  "up",
+  "down",
+  "left",
+  "right",
+  "ok",
+  "back",
+  "home",
+  "volume_up",
+  "volume_down",
+  "mute",
+  "power"
 ];
 
-function sendTvCommand(action, count) {
-  return new Promise((resolve, reject) => {
-    if (!tvGatewaySocket || tvGatewaySocket.readyState !== 1) {
-      return reject(new Error("La TV Bridge (Termux) n'est pas connectee."));
-    }
+async function sendTvCommand(action, count = 1) {
+  if (
+    !VALID_TV_ACTIONS.includes(action)
+  ) {
+    throw new Error(
+      `Commande TV invalide : ${action}`
+    );
+  }
 
-    const id = Date.now().toString() + Math.random().toString(36).slice(2, 7);
-    const payload = { type: "tv_command", id, action, count };
-
-    const timeout = setTimeout(() => {
-      pendingTvCommands.delete(id);
-      reject(new Error("Timeout : pas de reponse de la TV Bridge."));
-    }, 10000);
-
-    pendingTvCommands.set(id, { resolve, reject, timeout });
-    tvGatewaySocket.send(JSON.stringify(payload));
-  });
+  return tvCommand(
+    action,
+    count
+  );
 }
 
 // ============================================================
-// PONT CAST — WebSocket Railway <-> Termux (Chromecast, separe du pont TV)
+// PONT CAST — WebSocket Railway <-> Termux
 // ============================================================
 
-const CAST_BRIDGE_TOKEN = process.env.PALMI_CAST_BRIDGE_TOKEN;
+const CAST_BRIDGE_TOKEN =
+  process.env.PALMI_CAST_BRIDGE_TOKEN;
+
 let castGatewaySocket = null;
-const pendingCastCommands = new Map();
 
-const wssCast = new WebSocketServer({ noServer: true });
+const pendingCastCommands =
+  new Map();
 
-wssCast.on("connection", (ws, req) => {
-  const token = new URL(req.url, "http://localhost").searchParams.get("token");
+const wssCast =
+  new WebSocketServer({
+    noServer: true
+  });
 
-  if (!CAST_BRIDGE_TOKEN || token !== CAST_BRIDGE_TOKEN) {
-    console.log("Connexion Cast Bridge refusee (token invalide).");
-    ws.close(4001, "Token invalide");
-    return;
-  }
+wssCast.on(
+  "connection",
+  (ws, req) => {
+    const token =
+      new URL(
+        req.url,
+        "http://localhost"
+      )
+        .searchParams
+        .get("token");
 
-  console.log("Cast Bridge connectee (Termux).");
-  castGatewaySocket = ws;
+    if (
+      !CAST_BRIDGE_TOKEN ||
+      token !== CAST_BRIDGE_TOKEN
+    ) {
+      console.log(
+        "Connexion Cast Bridge refusee (token invalide)."
+      );
 
-  ws.on("message", (raw) => {
-    try {
-      const data = JSON.parse(raw.toString());
-      if (data.type === "cast_result" && data.id && pendingCastCommands.has(data.id)) {
-        const pending = pendingCastCommands.get(data.id);
-        clearTimeout(pending.timeout);
-        pendingCastCommands.delete(data.id);
-        if (data.success) pending.resolve(data);
-        else pending.reject(new Error(data.error || "Erreur Cast inconnue"));
+      ws.close(
+        4001,
+        "Token invalide"
+      );
+
+      return;
+    }
+
+    console.log(
+      "Cast Bridge connectee (Termux)."
+    );
+
+    castGatewaySocket = ws;
+
+    ws.on(
+      "message",
+      (raw) => {
+        try {
+          const data =
+            JSON.parse(
+              raw.toString()
+            );
+
+          if (
+            data.type ===
+              "cast_result" &&
+            data.id &&
+            pendingCastCommands.has(
+              data.id
+            )
+          ) {
+            const pending =
+              pendingCastCommands.get(
+                data.id
+              );
+
+            clearTimeout(
+              pending.timeout
+            );
+
+            pendingCastCommands.delete(
+              data.id
+            );
+
+            if (data.success) {
+              pending.resolve(
+                data
+              );
+            } else {
+              pending.reject(
+                new Error(
+                  data.error ||
+                    "Erreur Cast inconnue"
+                )
+              );
+            }
+          }
+        } catch (err) {
+          console.error(
+            "Message Cast Bridge invalide :",
+            err.message
+          );
+        }
       }
-    } catch (err) {
-      console.error("Message Cast Bridge invalide :", err.message);
-    }
-  });
+    );
 
-  ws.on("close", () => {
-    console.log("Cast Bridge deconnectee (Termux).");
-    if (castGatewaySocket === ws) castGatewaySocket = null;
-  });
+    ws.on(
+      "close",
+      () => {
+        console.log(
+          "Cast Bridge deconnectee (Termux)."
+        );
 
-  ws.on("error", (err) => {
-    console.error("Erreur WebSocket Cast Bridge :", err.message);
-  });
-});
+        if (
+          castGatewaySocket ===
+          ws
+        ) {
+          castGatewaySocket =
+            null;
+        }
+      }
+    );
 
-// Routeur unique pour les deux WebSocket (TV + Cast), evite les conflits
-// entre plusieurs WebSocketServer attaches au meme serveur HTTP.
-server.on("upgrade", (req, socket, head) => {
-  const { pathname } = new URL(req.url, "http://localhost");
-
-  if (pathname === "/tv-bridge") {
-    wss.handleUpgrade(req, socket, head, (ws) => {
-      wss.emit("connection", ws, req);
-    });
-  } else if (pathname === "/cast-bridge") {
-    wssCast.handleUpgrade(req, socket, head, (ws) => {
-      wssCast.emit("connection", ws, req);
-    });
-  } else {
-    socket.destroy();
+    ws.on(
+      "error",
+      (err) => {
+        console.error(
+          "Erreur WebSocket Cast Bridge :",
+          err.message
+        );
+      }
+    );
   }
-});
-
-const VALID_CAST_ACTIONS = ["play", "pause", "stop", "volume_up", "volume_down", "mute", "youtube"];
-
-function sendCastCommand(action, param) {
-  return new Promise((resolve, reject) => {
-    if (!castGatewaySocket || castGatewaySocket.readyState !== 1) {
-      return reject(new Error("La Cast Bridge (Termux) n'est pas connectee."));
-    }
-
-    const id = Date.now().toString() + Math.random().toString(36).slice(2, 7);
-    const payload = { type: "cast_command", id, action, param };
-
-    const timeout = setTimeout(() => {
-      pendingCastCommands.delete(id);
-      reject(new Error("Timeout : pas de reponse de la Cast Bridge (le chargement YouTube peut prendre du temps)."));
-    }, 25000);
-
-    pendingCastCommands.set(id, { resolve, reject, timeout });
-    castGatewaySocket.send(JSON.stringify(payload));
-  });
-}
+);
 
 // ============================================================
+// ROUTEUR WEBSOCKET
+// ============================================================
+
+server.on(
+  "upgrade",
+  (req, socket, head) => {
+    const {
+      pathname
+    } = new URL(
+      req.url,
+      "http://localhost"
+    );
+
+    if (
+      pathname ===
+      "/cast-bridge"
+    ) {
+      wssCast.handleUpgrade(
+        req,
+        socket,
+        head,
+        (ws) => {
+          wssCast.emit(
+            "connection",
+            ws,
+            req
+          );
+        }
+      );
+    } else {
+      socket.destroy();
+    }
+  }
+);
+
+const VALID_CAST_ACTIONS = [
+  "play",
+  "pause",
+  "stop",
+  "volume_up",
+  "volume_down",
+  "mute",
+  "youtube"
+];
+
+function sendCastCommand(
+  action,
+  param
+) {
+  return new Promise(
+    (resolve, reject) => {
+      if (
+        !castGatewaySocket ||
+        castGatewaySocket.readyState !==
+          1
+      ) {
+        return reject(
+          new Error(
+            "La Cast Bridge (Termux) n'est pas connectee."
+          )
+        );
+      }
+
+      const id =
+        Date.now().toString() +
+        Math.random()
+          .toString(36)
+          .slice(2, 7);
+
+      const payload = {
+        type: "cast_command",
+        id,
+        action,
+        param
+      };
+
+      const timeout =
+        setTimeout(
+          () => {
+            pendingCastCommands.delete(
+              id
+            );
+
+            reject(
+              new Error(
+                "Timeout : pas de reponse de la Cast Bridge (le chargement YouTube peut prendre du temps)."
+              )
+            );
+          },
+          25000
+        );
+
+      pendingCastCommands.set(
+        id,
+        {
+          resolve,
+          reject,
+          timeout
+        }
+      );
+
+      castGatewaySocket.send(
+        JSON.stringify(payload)
+      );
+    }
+  );
+}// ============================================================
 // BOT TELEGRAM
 // ============================================================
 
@@ -1142,6 +1268,10 @@ if (TELEGRAM_TOKEN) {
 
       rememberChat(chatId);
 
+      // ======================================================
+      // COMMANDES TV
+      // ======================================================
+
       if (text.startsWith("/tv")) {
         const TV_FRENCH_ALIASES = {
           "haut": "up",
@@ -1163,40 +1293,91 @@ if (TELEGRAM_TOKEN) {
           "eteindre": "power",
           "éteindre": "power",
           "allumer": "power",
-          "power": "power",
+          "power": "power"
         };
 
-        const parts = text.split(/\s+/).slice(1);
-        const rawAction = (parts[0] || "").toLowerCase();
-        const action = TV_FRENCH_ALIASES[rawAction] || rawAction;
-        let count = parseInt(parts[1], 10);
+        const parts =
+          text
+            .split(/\s+/)
+            .slice(1);
 
-        if (!VALID_TV_ACTIONS.includes(action)) {
+        const rawAction =
+          (
+            parts[0] || ""
+          ).toLowerCase();
+
+        const action =
+          TV_FRENCH_ALIASES[
+            rawAction
+          ] || rawAction;
+
+        let count =
+          parseInt(
+            parts[1],
+            10
+          );
+
+        if (
+          !VALID_TV_ACTIONS.includes(
+            action
+          )
+        ) {
           await bot.sendMessage(
             chatId,
             "Commande TV invalide.\n\n" +
-            "Utilise : /tv [action] [nombre optionnel]\n\n" +
-            "Actions en francais : haut, bas, gauche, droite, valider, retour, accueil, volume_plus, volume_moins, muet\n" +
-            "Actions en anglais : up, down, left, right, ok, back, home, volume_up, volume_down, mute"
+              "Utilise : /tv [action] [nombre optionnel]\n\n" +
+              "Actions en francais : haut, bas, gauche, droite, valider, retour, accueil, volume_plus, volume_moins, muet\n" +
+              "Actions en anglais : up, down, left, right, ok, back, home, volume_up, volume_down, mute"
           );
+
           return;
         }
 
-        if (isNaN(count) || count < 1) count = 1;
-        if (count > 10) count = 10;
+        if (
+          isNaN(count) ||
+          count < 1
+        ) {
+          count = 1;
+        }
+
+        if (count > 10) {
+          count = 10;
+        }
 
         try {
-          await sendTvCommand(action, count);
-          await bot.sendMessage(chatId, `Commande envoyee : ${action} x${count}`);
+          await sendTvCommand(
+            action,
+            count
+          );
+
+          await bot.sendMessage(
+            chatId,
+            `Commande envoyee : ${action} x${count}`
+          );
         } catch (err) {
-          await bot.sendMessage(chatId, `Erreur : ${err.message}`);
+          await bot.sendMessage(
+            chatId,
+            `Erreur : ${err.message}`
+          );
         }
+
         return;
       }
 
+      // ======================================================
+      // COMMANDES CAST
+      // ======================================================
+
       if (text.startsWith("/cast")) {
-        const parts = text.split(/\s+/).slice(1);
-        const rawAction = (parts[0] || "").toLowerCase();
+        const parts =
+          text
+            .split(/\s+/)
+            .slice(1);
+
+        const rawAction =
+          (
+            parts[0] || ""
+          ).toLowerCase();
 
         const CAST_FRENCH_ALIASES = {
           "lecture": "play",
@@ -1211,45 +1392,82 @@ if (TELEGRAM_TOKEN) {
           "volume-": "volume_down",
           "muet": "mute",
           "silence": "mute",
-          "youtube": "youtube",
+          "youtube": "youtube"
         };
 
-        const action = CAST_FRENCH_ALIASES[rawAction] || rawAction;
+        const action =
+          CAST_FRENCH_ALIASES[
+            rawAction
+          ] || rawAction;
 
-        if (!VALID_CAST_ACTIONS.includes(action)) {
+        if (
+          !VALID_CAST_ACTIONS.includes(
+            action
+          )
+        ) {
           await bot.sendMessage(
             chatId,
             "Commande Cast invalide.\n\n" +
-            "Utilise :\n" +
-            "/cast play (ou lecture)\n" +
-            "/cast pause\n" +
-            "/cast stop (ou arreter)\n" +
-            "/cast volume_plus\n" +
-            "/cast volume_moins\n" +
-            "/cast muet\n" +
-            "/cast youtube <url ou id video>"
+              "Utilise :\n" +
+              "/cast play (ou lecture)\n" +
+              "/cast pause\n" +
+              "/cast stop (ou arreter)\n" +
+              "/cast volume_plus\n" +
+              "/cast volume_moins\n" +
+              "/cast muet\n" +
+              "/cast youtube <url ou id video>"
           );
+
           return;
         }
 
         let param = null;
-        if (action === "youtube") {
-          param = text.split(/\s+/).slice(2).join(" ");
+
+        if (
+          action === "youtube"
+        ) {
+          param =
+            text
+              .split(/\s+/)
+              .slice(2)
+              .join(" ");
+
           if (!param) {
-            await bot.sendMessage(chatId, "Donne une URL ou un ID YouTube.\n\nExemple : /cast youtube https://youtu.be/abc123");
+            await bot.sendMessage(
+              chatId,
+              "Donne une URL ou un ID YouTube.\n\nExemple : /cast youtube https://youtu.be/abc123"
+            );
+
             return;
           }
         }
 
         try {
-          if (action === "youtube") {
-            await bot.sendMessage(chatId, "Extraction et lancement de la video, patiente quelques secondes...");
+          if (
+            action === "youtube"
+          ) {
+            await bot.sendMessage(
+              chatId,
+              "Extraction et lancement de la video, patiente quelques secondes..."
+            );
           }
-          await sendCastCommand(action, param);
-          await bot.sendMessage(chatId, `Commande Cast envoyee : ${action}`);
+
+          await sendCastCommand(
+            action,
+            param
+          );
+
+          await bot.sendMessage(
+            chatId,
+            `Commande Cast envoyee : ${action}`
+          );
         } catch (err) {
-          await bot.sendMessage(chatId, `Erreur : ${err.message}`);
+          await bot.sendMessage(
+            chatId,
+            `Erreur : ${err.message}`
+          );
         }
+
         return;
       }
 
@@ -1278,14 +1496,6 @@ if (TELEGRAM_TOKEN) {
         // ======================================================
         // COMMANDES LUMIERE PRIORITAIRES
         // ======================================================
-        // IMPORTANT :
-        // Ces commandes sont AVANT le système /add.
-        // Donc "Éteins la lumière" ne pourra plus
-        // jamais être interprété comme une heure.
-
-        // ------------------------------------------------------
-        // ETEINDRE
-        // ------------------------------------------------------
 
         const wantsOff =
           (
@@ -1316,12 +1526,10 @@ if (TELEGRAM_TOKEN) {
           return;
         }
 
-        // ------------------------------------------------------
-        // ALLUMER
-        // ------------------------------------------------------
-
         const wantsOn =
-          lowerText.includes("allume") &&
+          lowerText.includes(
+            "allume"
+          ) &&
           (
             lowerText.includes("lumière") ||
             lowerText.includes("lumiere")
@@ -1341,10 +1549,6 @@ if (TELEGRAM_TOKEN) {
 
           return;
         }
-
-        // ------------------------------------------------------
-        // LUMINOSITE
-        // ------------------------------------------------------
 
         const brightnessMatch =
           lowerText.match(
@@ -1391,7 +1595,9 @@ if (TELEGRAM_TOKEN) {
             chatId
           ];
 
-          await setBrightness(30);
+          await setBrightness(
+            30
+          );
 
           await bot.sendMessage(
             chatId,
@@ -1413,7 +1619,9 @@ if (TELEGRAM_TOKEN) {
             chatId
           ];
 
-          await setBrightness(100);
+          await setBrightness(
+            100
+          );
 
           await bot.sendMessage(
             chatId,
@@ -1422,10 +1630,6 @@ if (TELEGRAM_TOKEN) {
 
           return;
         }
-
-        // ------------------------------------------------------
-        // BLANC
-        // ------------------------------------------------------
 
         if (
           lowerText.includes(
@@ -1452,10 +1656,6 @@ if (TELEGRAM_TOKEN) {
           return;
         }
 
-        // ------------------------------------------------------
-        // COULEURS
-        // ------------------------------------------------------
-
         for (
           const [
             name,
@@ -1473,7 +1673,9 @@ if (TELEGRAM_TOKEN) {
               chatId
             ];
 
-            await setColor(hex);
+            await setColor(
+              hex
+            );
 
             await bot.sendMessage(
               chatId,
@@ -1482,9 +1684,7 @@ if (TELEGRAM_TOKEN) {
 
             return;
           }
-        }
-
-        // ======================================================
+        }        // ======================================================
         // CREATION AUTOMATISATION
         // ======================================================
 
@@ -1494,10 +1694,6 @@ if (TELEGRAM_TOKEN) {
           ];
 
         if (creation) {
-          // ----------------------------------------------------
-          // NOM
-          // ----------------------------------------------------
-
           if (
             creation.step === "name"
           ) {
@@ -1517,17 +1713,16 @@ if (TELEGRAM_TOKEN) {
             return;
           }
 
-          // ----------------------------------------------------
-          // HEURE
-          // ----------------------------------------------------
-
           if (
             creation.step === "time"
           ) {
             const cleanTime =
               text
                 .trim()
-                .replace(".", ":");
+                .replace(
+                  ".",
+                  ":"
+                );
 
             if (
               !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(
@@ -1559,10 +1754,6 @@ if (TELEGRAM_TOKEN) {
             return;
           }
 
-          // ----------------------------------------------------
-          // DESCRIPTION
-          // ----------------------------------------------------
-
           if (
             creation.step ===
             "description"
@@ -1581,12 +1772,9 @@ if (TELEGRAM_TOKEN) {
             return;
           }
 
-          // ----------------------------------------------------
-          // MESSAGE
-          // ----------------------------------------------------
-
           if (
-            creation.step === "message"
+            creation.step ===
+            "message"
           ) {
             const automation = {
               id:
@@ -1636,10 +1824,6 @@ if (TELEGRAM_TOKEN) {
 
             return;
           }
-
-          // ----------------------------------------------------
-          // SUPPRESSION
-          // ----------------------------------------------------
 
           if (
             creation.step === "remove"
