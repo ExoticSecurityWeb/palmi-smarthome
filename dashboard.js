@@ -97,6 +97,17 @@ app.get("/light/off", async (req, res) => {
 
 // Le dashboard envoie du POST + JSON {brightness}, mais palmi-smarthome attend
 // du GET + ?value=. On adapte ici, sans rien changer côté palmi-smarthome.
+app.get("/light/status", async (req, res) => {
+    try {
+        const r = await fetch(`${SMARTHOME_URL}/light/status`);
+        const data = await r.json();
+        res.status(r.status).json(data);
+    } catch (error) {
+        console.error("Erreur proxy light/status :", error);
+        res.status(502).json({ success: false, error: "palmi-smarthome injoignable" });
+    }
+});
+
 app.post("/light/brightness", async (req, res) => {
     try {
         const value = req.body?.brightness;
