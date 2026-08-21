@@ -21,13 +21,8 @@
     box-sizing: border-box;
 }
 
-html,
 body {
     margin: 0;
-    min-height: 100%;
-}
-
-body {
     min-height: 100vh;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     color: var(--text);
@@ -71,7 +66,6 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 20px;
     margin-bottom: 25px;
 }
 
@@ -93,7 +87,6 @@ body {
     backdrop-filter: blur(18px);
     border-radius: 999px;
     font-size: 14px;
-    white-space: nowrap;
 }
 
 .status-dot {
@@ -116,11 +109,7 @@ body {
     padding: 22px;
     border: 1px solid var(--border);
     border-radius: 24px;
-    background: linear-gradient(
-        145deg,
-        var(--brown),
-        var(--brown-light)
-    );
+    background: linear-gradient(145deg,var(--brown),var(--brown-light));
     backdrop-filter: blur(18px);
     box-shadow: 0 18px 50px rgba(20,10,5,.25);
 }
@@ -154,7 +143,6 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 15px;
     padding: 13px 14px;
     border: 1px solid rgba(255,255,255,.08);
     background: rgba(255,255,255,.055);
@@ -191,11 +179,6 @@ button:active {
     transform: scale(.96);
 }
 
-button:disabled {
-    opacity: .4;
-    cursor: not-allowed;
-}
-
 .button-active {
     color: #ffe3bd;
     background: rgba(215,165,111,.18);
@@ -223,56 +206,61 @@ button:disabled {
     font-weight: 700;
 }
 
+.accent {
+    color: var(--accent);
+}
+
 .weather-main {
     display: flex;
     align-items: center;
     gap: 15px;
-    margin-bottom: 15px;
 }
 
 .weather-icon {
-    width: 64px;
-    height: 64px;
+    width: 70px;
+    height: 70px;
 }
 
 .weather-description {
-    color: var(--muted);
     text-transform: capitalize;
+    color: var(--muted);
 }
 
-.weather-grid {
+.weather-details {
     display: grid;
     grid-template-columns: repeat(3,1fr);
     gap: 10px;
+    margin-top: 18px;
 }
 
-.weather-item {
+.weather-detail {
     padding: 12px;
-    border-radius: 14px;
     background: rgba(255,255,255,.055);
+    border-radius: 14px;
     text-align: center;
 }
 
-.weather-value {
-    font-size: 20px;
-    font-weight: 650;
-}
-
-.weather-label {
+.footer {
+    text-align: center;
     color: var(--muted);
-    font-size: 12px;
-    margin-top: 3px;
+    font-size: 13px;
+    margin-top: 23px;
 }
 
-.system-online {
-    color: #4ade80;
-}
+@media (max-width:700px) {
+    .container {
+        padding: 18px 13px 30px;
+    }
 
-.system-offline {
-    color: #ef4444;
-}
+    .header {
+        align-items: flex-start;
+        gap: 12px;
+    }
 
-@media (max-width: 760px) {
+    .status {
+        white-space: nowrap;
+    }
+
     .grid {
         grid-template-columns: 1fr;
     }
@@ -281,13 +269,13 @@ button:disabled {
         grid-column: auto;
     }
 
-    .header {
-        align-items: flex-start;
-        flex-direction: column;
+    .card {
+        border-radius: 20px;
+        padding: 18px;
     }
 
-    .weather-grid {
-        grid-template-columns: 1fr 1fr 1fr;
+    .weather-details {
+        grid-template-columns: 1fr;
     }
 }
 </style>
@@ -298,603 +286,355 @@ button:disabled {
 <div class="background"></div>
 <div class="overlay"></div>
 
-<div class="container">
+<main class="container">
 
 <header class="header">
     <div>
         <div class="logo">🌴 Palmi Smart Home</div>
-
-        <div class="subtitle">
-            Contrôle de la caravane connectée
-        </div>
+        <div class="subtitle">Ta maison, simplement connectée.</div>
     </div>
 
     <div class="status">
-        <span
-            id="headerStatusDot"
-            class="status-dot"
-        ></span>
-
-        <span id="headerStatusText">
-            Vérification...
-        </span>
+        <span class="status-dot" id="headerStatusDot"></span>
+        <span id="headerStatusText">Vérification...</span>
     </div>
 </header>
 
-<main class="grid">
+<section class="grid">
 
-    <!-- =====================================================
-         💡 CHAMBRE
-         ===================================================== -->
+<!-- 💡 LUMIÈRE CHAMBRE -->
 
-    <section class="card">
+<article class="card">
 
-        <div class="card-title">
-            <h2>💡 Lumière — Chambre</h2>
-            <span class="card-icon">💡</span>
-        </div>
+<div class="card-title">
+    <h2>💡 Lumière</h2>
+    <span class="card-icon">💡</span>
+</div>
 
-        <div class="rows">
+<div class="rows">
 
-            <div class="row">
+<div class="row">
+    <div>
+        <div class="row-title">Chambre</div>
+        <div class="row-subtitle" id="lightState">Éteinte</div>
+    </div>
 
-                <div>
-                    <div class="row-title">
-                        État
-                    </div>
+    <button id="lightButton" onclick="toggleLight()">⏻</button>
+</div>
 
-                    <div
-                        class="row-subtitle"
-                        id="lightState"
-                    >
-                        Chargement...
-                    </div>
-                </div>
+<div class="row">
 
-                <button
-                    id="lightButton"
-                    onclick="toggleLight()"
-                >
-                    ON / OFF
-                </button>
+<div>
+    <div class="row-title">Luminosité</div>
+    <div class="row-subtitle">Réglage de la lumière</div>
+</div>
 
-            </div>
+<div>
+    <button onclick="changeBrightness(-10)">−</button>
 
-            <div class="row">
+    <span id="brightness" class="accent">50 %</span>
 
-                <div>
-                    <div class="row-title">
-                        Luminosité
-                    </div>
-
-                    <div
-                        class="row-subtitle"
-                        id="brightness"
-                    >
-                        -- %
-                    </div>
-                </div>
-
-                <div>
-
-                    <button
-                        onclick="changeBrightness(-10)"
-                    >
-                        −
-                    </button>
-
-                    <button
-                        onclick="changeBrightness(10)"
-                    >
-                        +
-                    </button>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </section>
-
-
-    <!-- =====================================================
-         💡 SALON — LUMA
-         ===================================================== -->
-
-    <section class="card">
-
-        <div class="card-title">
-            <h2>💡 Lumière — Salon</h2>
-            <span class="card-icon">🌴</span>
-        </div>
-
-        <div class="rows">
-
-            <div class="row">
-
-                <div>
-                    <div class="row-title">
-                        État
-                    </div>
-
-                    <div
-                        class="row-subtitle"
-                        id="lumaState"
-                    >
-                        Chargement...
-                    </div>
-                </div>
-
-                <button
-                    id="lumaButton"
-                    onclick="toggleLuma()"
-                >
-                    ON / OFF
-                </button>
-
-            </div>
-
-            <div class="row">
-
-                <div>
-                    <div class="row-title">
-                        Luminosité
-                    </div>
-
-                    <div
-                        class="row-subtitle"
-                        id="lumaBrightness"
-                    >
-                        -- %
-                    </div>
-                </div>
-
-                <div>
-
-                    <button
-                        onclick="changeLumaBrightness(-10)"
-                    >
-                        −
-                    </button>
-
-                    <button
-                        onclick="changeLumaBrightness(10)"
-                    >
-                        +
-                    </button>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </section>
-
-
-    <!-- =====================================================
-         🌦️ MÉTÉO
-         ===================================================== -->
-
-    <section class="card">
-
-        <div class="card-title">
-            <h2>🌦️ Météo</h2>
-            <span class="card-icon">☁️</span>
-        </div>
-
-        <div class="weather-main">
-
-            <img
-                id="weatherIcon"
-                class="weather-icon"
-                alt=""
-            >
-
-            <div>
-
-                <div>
-                    <span
-                        id="weatherTemp"
-                        class="temperature"
-                    >
-                        --
-                    </span>
-                    °C
-                </div>
-
-                <div
-                    id="weatherDescription"
-                    class="weather-description"
-                >
-                    Chargement...
-                </div>
-
-            </div>
-
-        </div>
-
-        <div class="weather-grid">
-
-            <div class="weather-item">
-
-                <div
-                    id="weatherFeels"
-                    class="weather-value"
-                >
-                    --
-                </div>
-
-                <div class="weather-label">
-                    Ressenti °C
-                </div>
-
-            </div>
-
-            <div class="weather-item">
-
-                <div
-                    id="weatherHumidity"
-                    class="weather-value"
-                >
-                    --
-                </div>
-
-                <div class="weather-label">
-                    Humidité %
-                </div>
-
-            </div>
-
-            <div class="weather-item">
-
-                <div
-                    id="weatherWind"
-                    class="weather-value"
-                >
-                    --
-                </div>
-
-                <div class="weather-label">
-                    Vent km/h
-                </div>
-
-            </div>
-
-        </div>
-
-    </section>
-    <!-- =====================================================
-         📺 TV 1 — GOOGLE TV STICK
-         ===================================================== -->
-
-    <section class="card card-wide">
-
-        <div class="card-title">
-            <h2>📺 TV 1 — Google TV Stick</h2>
-            <span class="card-icon">📺</span>
-        </div>
-
-        <div class="remote">
-
-            <button
-                class="empty"
-                disabled
-            ></button>
-
-            <button onclick="tv(1,'up')">
-                ▲
-            </button>
-
-            <button
-                class="empty"
-                disabled
-            ></button>
-
-            <button onclick="tv(1,'left')">
-                ◀
-            </button>
-
-            <button onclick="tv(1,'ok')">
-                OK
-            </button>
-
-            <button onclick="tv(1,'right')">
-                ▶
-            </button>
-
-            <button onclick="tv(1,'back')">
-                ↩
-            </button>
-
-            <button onclick="tv(1,'down')">
-                ▼
-            </button>
-
-            <button onclick="tv(1,'home')">
-                🏠
-            </button>
-
-            <button onclick="tv(1,'volume_down')">
-                🔉
-            </button>
-
-            <button onclick="tv(1,'mute')">
-                🔇
-            </button>
-
-            <button onclick="tv(1,'volume_up')">
-                🔊
-            </button>
-
-            <button onclick="tv(1,'power')">
-                ⏻
-            </button>
-
-        </div>
-
-    </section>
-
-
-    <!-- =====================================================
-         📽️ CHROMECAST
-         Même format de télécommande
-         ===================================================== -->
-
-    <section class="card card-wide">
-
-        <div class="card-title">
-            <h2>📽️ Chromecast</h2>
-            <span class="card-icon">📺</span>
-        </div>
-
-        <div class="remote">
-
-            <button
-                class="empty"
-                disabled
-            ></button>
-
-            <button onclick="cast('play')">
-                ▶️
-            </button>
-
-            <button
-                class="empty"
-                disabled
-            ></button>
-
-            <button onclick="cast('volume_down')">
-                🔉
-            </button>
-
-            <button onclick="cast('pause')">
-                ⏸️
-            </button>
-
-            <button onclick="cast('volume_up')">
-                🔊
-            </button>
-
-            <button onclick="cast('stop')">
-                ⏹️
-            </button>
-
-            <button onclick="cast('mute')">
-                🔇
-            </button>
-
-            <button
-                class="empty"
-                disabled
-            ></button>
-
-        </div>
-
-    </section>
-
-
-    <!-- =====================================================
-         🏠 SYSTÈME
-         ===================================================== -->
-
-    <section class="card card-wide">
-
-        <div class="card-title">
-            <h2>🏠 Système</h2>
-            <span class="card-icon">🌴</span>
-        </div>
-
-        <div class="row">
-
-            <div>
-
-                <div class="row-title">
-                    Palmi Smart Home
-                </div>
-
-                <div class="row-subtitle">
-                    État général du système
-                </div>
-
-            </div>
-
-            <div id="generalStatusText">
-                ● Vérification...
-            </div>
-
-        </div>
-
-    </section>
-
-</main>
+    <button onclick="changeBrightness(10)">+</button>
+</div>
 
 </div>
 
+</div>
+</article>
+
+
+<!-- 💡 LUMA — SALON -->
+
+<article class="card">
+
+<div class="card-title">
+    <h2>💡 Lumière</h2>
+    <span class="card-icon">🌴</span>
+</div>
+
+<div class="rows">
+
+<div class="row">
+    <div>
+        <div class="row-title">Salon</div>
+        <div class="row-subtitle" id="lumaState">Chargement...</div>
+    </div>
+
+    <button id="lumaButton" onclick="toggleLuma()">⏻</button>
+</div>
+
+<div class="row">
+
+<div>
+    <div class="row-title">Luminosité</div>
+    <div class="row-subtitle">Réglage de Luma</div>
+</div>
+
+<div>
+    <button onclick="changeLumaBrightness(-10)">−</button>
+
+    <span id="lumaBrightness" class="accent">-- %</span>
+
+    <button onclick="changeLumaBrightness(10)">+</button>
+</div>
+
+</div>
+
+</div>
+</article>
+
+
+<!-- 📺 TV 1 -->
+
+<article class="card">
+
+<div class="card-title">
+    <h2>📺 TV 1</h2>
+    <span class="row-subtitle">Google TV Stick</span>
+</div>
+
+<div class="remote">
+
+<button class="empty">.</button>
+<button onclick="tv(1,'up')">▲</button>
+<button class="empty">.</button>
+
+<button onclick="tv(1,'left')">◀</button>
+<button class="button-active" onclick="tv(1,'ok')">OK</button>
+<button onclick="tv(1,'right')">▶</button>
+
+<button class="empty">.</button>
+<button onclick="tv(1,'down')">▼</button>
+<button class="empty">.</button>
+
+<button onclick="tv(1,'volume_down')">🔉</button>
+<button onclick="tv(1,'mute')">🔇</button>
+<button onclick="tv(1,'volume_up')">🔊</button>
+
+</div>
+</article>
+
+
+<!-- 📺 TV 2 -->
+
+<article class="card">
+
+<div class="card-title">
+    <h2>📺 TV 2</h2>
+    <span class="row-subtitle">Chromecast</span>
+</div>
+
+<div class="remote">
+
+<button class="empty">.</button>
+<button onclick="tv(2,'up')">▲</button>
+<button class="empty">.</button>
+
+<button onclick="tv(2,'left')">◀</button>
+<button class="button-active" onclick="tv(2,'ok')">OK</button>
+<button onclick="tv(2,'right')">▶</button>
+
+<button class="empty">.</button>
+<button onclick="tv(2,'down')">▼</button>
+<button class="empty">.</button>
+
+<button onclick="tv(2,'volume_down')">🔉</button>
+<button onclick="tv(2,'mute')">🔇</button>
+<button onclick="tv(2,'volume_up')">🔊</button>
+
+</div>
+</article>
+
+
+<!-- 🌦️ MÉTÉO -->
+
+<article class="card">
+
+<div class="card-title">
+    <h2>🌦️ Météo</h2>
+    <span class="row-subtitle">Heugas</span>
+</div>
+
+<div class="weather-main">
+
+<img id="weatherIcon" class="weather-icon" alt="Météo">
+
+<div>
+
+<div class="temperature">
+    <span id="weatherTemp">--</span>
+    <span class="accent">°C</span>
+</div>
+
+<div id="weatherDescription" class="weather-description">
+    Chargement...
+</div>
+
+</div>
+</div>
+
+<div class="weather-details">
+
+<div class="weather-detail">
+    💧
+    <br>
+    <span id="weatherHumidity">--</span> %
+</div>
+
+<div class="weather-detail">
+    💨
+    <br>
+    <span id="weatherWind">--</span> km/h
+</div>
+
+<div class="weather-detail">
+    🌡️
+    <br>
+    Ressenti <span id="weatherFeels">--</span> °C
+</div>
+
+</div>
+
+</article>
+
+
+<!-- 🤖 PALMI -->
+
+<article class="card">
+
+<div class="card-title">
+    <h2>🤖 Palmi</h2>
+    <span class="status-dot"></span>
+</div>
+
+<div class="subtitle">
+    Assistant domotique prêt.
+</div>
+
+<br>
+
+<button onclick="loadWeather()">
+    ↻ Actualiser
+</button>
+
+</article>
+
+
+<!-- 🏠 MAISON -->
+
+<article class="card card-wide">
+
+<div class="card-title">
+    <h2>🏠 Maison</h2>
+    <span class="row-subtitle">Dashboard V1</span>
+</div>
+
+<div class="row">
+
+<div>
+    <div class="row-title">État général</div>
+    <div class="row-subtitle">Palmi Smart Home</div>
+</div>
+
+<span class="accent" id="generalStatusText">● Vérification...</span>
+
+</div>
+
+</article>
+
+</section>
+
+<div class="footer">
+    Palmi Smart Home · 🤎 Interface marron fumé
+</div>
+
+</main>
 <script>
-
-/* ============================================================
-   🌴 PALMI SMART HOME — DASHBOARD
-   ============================================================ */
-
-
-/* ============================================================
-   💡 CHAMBRE
-   ============================================================ */
 
 let lightOn = false;
 let brightness = 50;
 
+let lumaOn = false;
+let lumaBrightness = 50;
+
+
+/* ============================================================
+   💡 LUMIÈRE CHAMBRE
+   ============================================================ */
 
 async function loadLightStatus() {
 
     try {
 
-        const response =
-            await fetch("/light/status");
+        const response = await fetch("/light/status");
+        const data = await response.json();
 
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            data.success === false
-        ) {
-            throw new Error(
-                data.error ||
-                "Lumière indisponible"
-            );
+        if (data.success === false) {
+            console.log("Impossible de charger l'etat de la lumiere.");
+            return;
         }
 
-        lightOn =
-            Boolean(data.on);
+        lightOn = Boolean(data.on);
 
-        if (
-            typeof data.brightness === "number"
-        ) {
-            brightness =
-                data.brightness;
+        if (typeof data.brightness === "number") {
+            brightness = data.brightness;
         }
 
         updateLight();
 
+        document.getElementById("brightness")
+            .textContent = brightness + " %";
+
     } catch (error) {
-
-        console.error(
-            "Erreur lumière :",
-            error
-        );
-
-        const state =
-            document.getElementById(
-                "lightState"
-            );
-
-        const level =
-            document.getElementById(
-                "brightness"
-            );
-
-        if (state) {
-            state.textContent =
-                "Indisponible";
-        }
-
-        if (level) {
-            level.textContent =
-                "-- %";
-        }
-
+        console.log("Erreur chargement etat lumiere", error);
     }
-
 }
 
 
 async function toggleLight() {
 
+    const endpoint =
+        lightOn
+            ? "/light/off"
+            : "/light/on";
+
     try {
 
-        const endpoint =
-            lightOn
-                ? "/light/off"
-                : "/light/on";
+        const response = await fetch(endpoint);
+        const data = await response.json();
 
-        const response =
-            await fetch(endpoint);
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            data.success === false
-        ) {
-            throw new Error(
-                data.error ||
-                "Erreur lumière"
-            );
+        if (data.success === false) {
+            alert("Impossible de contrôler la lumière.");
+            return;
         }
 
-        lightOn =
-            !lightOn;
-
+        lightOn = !lightOn;
         updateLight();
 
     } catch (error) {
-
-        console.error(
-            "Erreur commande lumière :",
-            error
-        );
-
+        alert("Erreur de connexion au serveur.");
     }
-
 }
 
 
 function updateLight() {
 
-    const state =
-        document.getElementById(
-            "lightState"
-        );
-
     const button =
-        document.getElementById(
-            "lightButton"
-        );
+        document.getElementById("lightButton");
 
-    const level =
-        document.getElementById(
-            "brightness"
-        );
+    const state =
+        document.getElementById("lightState");
 
-    if (state) {
+    if (lightOn) {
 
-        state.textContent =
-            lightOn
-                ? "Allumée"
-                : "Éteinte";
+        button.classList.add("button-active");
+        state.textContent = "Allumée";
 
+    } else {
+
+        button.classList.remove("button-active");
+        state.textContent = "Éteinte";
     }
-
-    if (button) {
-
-        button.classList.toggle(
-            "button-active",
-            lightOn
-        );
-
-    }
-
-    if (level) {
-
-        level.textContent =
-            brightness + " %";
-
-    }
-
 }
 
 
@@ -918,45 +658,33 @@ async function changeBrightness(amount) {
                     method: "POST",
 
                     headers: {
-                        "Content-Type":
-                            "application/json"
+                        "Content-Type": "application/json"
                     },
 
-                    body:
-                        JSON.stringify({
-                            brightness:
-                                newBrightness
-                        })
+                    body: JSON.stringify({
+                        brightness: newBrightness
+                    })
                 }
             );
 
-        const data =
-            await response.json();
+        const data = await response.json();
 
-        if (
-            !response.ok ||
-            data.success === false
-        ) {
-            throw new Error(
-                data.error ||
-                "Erreur luminosité"
-            );
+        if (data.success === false) {
+            return;
         }
 
-        brightness =
-            newBrightness;
+        brightness = newBrightness;
 
-        updateLight();
+        document.getElementById("brightness")
+            .textContent = brightness + " %";
 
     } catch (error) {
 
-        console.error(
-            "Erreur luminosité :",
+        console.log(
+            "Erreur luminosité",
             error
         );
-
     }
-
 }
 
 
@@ -964,8 +692,45 @@ async function changeBrightness(amount) {
    💡 LUMA — SALON
    ============================================================ */
 
-let lumaOn = false;
-let lumaBrightness = 50;
+function extractLumaStatus(data) {
+
+    const result = data?.result;
+
+    if (!Array.isArray(result)) {
+        return null;
+    }
+
+    let on = null;
+    let bright = null;
+
+    for (const item of result) {
+
+        if (
+            item.code === "switch_led" ||
+            item.code === "switch"
+        ) {
+            on = Boolean(item.value);
+        }
+
+        if (
+            item.code === "bright_value" ||
+            item.code === "bright_value_v2"
+        ) {
+            const value = Number(item.value);
+
+            if (Number.isFinite(value)) {
+                bright = Math.round(
+                    (value / 1000) * 100
+                );
+            }
+        }
+    }
+
+    return {
+        on,
+        brightness: bright
+    };
+}
 
 
 async function loadLumaStatus() {
@@ -978,110 +743,54 @@ async function loadLumaStatus() {
         const data =
             await response.json();
 
-        if (
-            !response.ok ||
-            data.success === false
-        ) {
-            throw new Error(
-                data.error ||
-                "Luma indisponible"
-            );
+        if (!response.ok || data.success === false) {
+            throw new Error("Luma indisponible");
         }
 
-        const statuses =
-            Array.isArray(data.result)
-                ? data.result
-                : [];
+        const status =
+            extractLumaStatus(data);
 
-        const switchStatus =
-            statuses.find(
-                item =>
-                    item.code === "switch_led"
-            );
+        if (status) {
 
-        const brightnessStatus =
-            statuses.find(
-                item =>
-                    item.code === "bright_value"
-            );
-
-        if (switchStatus) {
-
-            lumaOn =
-                Boolean(
-                    switchStatus.value
-                );
-
-        }
-
-        if (brightnessStatus) {
-
-            const value =
-                Number(
-                    brightnessStatus.value
-                );
-
-            if (
-                Number.isFinite(value)
-            ) {
-
-                lumaBrightness =
-                    Math.round(
-                        Math.max(
-                            0,
-                            Math.min(
-                                100,
-                                value / 10
-                            )
-                        )
-                    );
-
+            if (typeof status.on === "boolean") {
+                lumaOn = status.on;
             }
 
+            if (typeof status.brightness === "number") {
+                lumaBrightness =
+                    Math.max(
+                        0,
+                        Math.min(
+                            100,
+                            status.brightness
+                        )
+                    );
+            }
         }
 
         updateLuma();
 
     } catch (error) {
 
-        console.error(
-            "Erreur Luma :",
+        console.log(
+            "Erreur chargement Luma :",
             error
         );
 
-        const state =
-            document.getElementById(
-                "lumaState"
-            );
-
-        const level =
-            document.getElementById(
-                "lumaBrightness"
-            );
-
-        if (state) {
-            state.textContent =
-                "Indisponible";
-        }
-
-        if (level) {
-            level.textContent =
-                "-- %";
-        }
-
+        document.getElementById("lumaState")
+            .textContent = "Indisponible";
     }
-
 }
 
 
 async function toggleLuma() {
 
-    try {
+    const endpoint =
+        lumaOn
+            ? "/luma/off"
+            : "/luma/on";
 
-        const endpoint =
-            lumaOn
-                ? "/luma/off"
-                : "/luma/on";
+    try {
 
         const response =
             await fetch(endpoint);
@@ -1089,75 +798,57 @@ async function toggleLuma() {
         const data =
             await response.json();
 
-        if (
-            !response.ok ||
-            data.success === false
-        ) {
-            throw new Error(
-                data.error ||
-                "Erreur Luma"
+        if (!response.ok || data.success === false) {
+
+            alert(
+                "Impossible de contrôler la lumière du salon."
             );
+
+            return;
         }
 
-        lumaOn =
-            !lumaOn;
+        lumaOn = !lumaOn;
 
         updateLuma();
 
     } catch (error) {
 
-        console.error(
-            "Erreur commande Luma :",
+        console.log(
+            "Erreur Luma :",
             error
         );
 
+        alert(
+            "Luma est indisponible."
+        );
     }
-
 }
 
 
 function updateLuma() {
 
-    const state =
-        document.getElementById(
-            "lumaState"
-        );
-
     const button =
-        document.getElementById(
-            "lumaButton"
-        );
+        document.getElementById("lumaButton");
 
-    const level =
-        document.getElementById(
-            "lumaBrightness"
-        );
+    const state =
+        document.getElementById("lumaState");
 
-    if (state) {
+    const brightnessElement =
+        document.getElementById("lumaBrightness");
 
-        state.textContent =
-            lumaOn
-                ? "Allumée"
-                : "Éteinte";
+    if (lumaOn) {
 
+        button.classList.add("button-active");
+        state.textContent = "Allumée";
+
+    } else {
+
+        button.classList.remove("button-active");
+        state.textContent = "Éteinte";
     }
 
-    if (button) {
-
-        button.classList.toggle(
-            "button-active",
-            lumaOn
-        );
-
-    }
-
-    if (level) {
-
-        level.textContent =
-            lumaBrightness + " %";
-
-    }
-
+    brightnessElement.textContent =
+        lumaBrightness + " %";
 }
 
 
@@ -1182,30 +873,29 @@ async function changeLumaBrightness(amount) {
         const data =
             await response.json();
 
-        if (
-            !response.ok ||
-            data.success === false
-        ) {
-            throw new Error(
-                data.error ||
-                "Erreur luminosité Luma"
+        if (!response.ok || data.success === false) {
+
+            console.log(
+                "Impossible de modifier la luminosité de Luma."
             );
+
+            return;
         }
 
         lumaBrightness =
             newBrightness;
 
-        updateLuma();
+        document.getElementById("lumaBrightness")
+            .textContent =
+            lumaBrightness + " %";
 
     } catch (error) {
 
-        console.error(
+        console.log(
             "Erreur luminosité Luma :",
             error
         );
-
     }
-
 }
 
 
@@ -1215,103 +905,22 @@ async function changeLumaBrightness(amount) {
 
 async function tv(number, action) {
 
-    if (number !== 1) {
-        return;
-    }
-
     try {
 
-        const response =
-            await fetch(
-                `/tv/${number}/${action}`,
-                {
-                    method: "POST",
+        await fetch(
+            `/tv/${number}/${action}`,
+            {
+                method: "POST"
+            }
+        );
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            count: 1
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            data.success === false
-        ) {
-
-            console.error(
-                "Commande TV refusée :",
-                data
-            );
-
-            return;
-        }
+    } catch (error) {
 
         console.log(
-            "📺 TV 1 :",
-            action
-        );
-
-    } catch (error) {
-
-        console.error(
-            "Erreur TV :",
+            `TV ${number} indisponible`,
             error
         );
-
     }
-
-}
-
-
-/* ============================================================
-   📽️ CHROMECAST
-   ============================================================ */
-
-async function cast(action) {
-
-    try {
-
-        const response =
-            await fetch(
-                `/cast/${action}`,
-                {
-                    method: "POST"
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            data.success === false
-        ) {
-
-            console.error(
-                "Commande Chromecast refusée :",
-                data
-            );
-
-        }
-
-    } catch (error) {
-
-        console.error(
-            "Erreur Chromecast :",
-            error
-        );
-
-    }
-
 }
 
 
@@ -1322,13 +931,10 @@ async function cast(action) {
 async function loadWeather() {
 
     const description =
-        document.getElementById(
-            "weatherDescription"
-        );
+        document.getElementById("weatherDescription");
 
-    if (!description) {
-        return;
-    }
+    description.textContent =
+        "Chargement...";
 
     try {
 
@@ -1338,66 +944,39 @@ async function loadWeather() {
         const data =
             await response.json();
 
-        if (
-            !response.ok ||
-            !data.success
-        ) {
-            throw new Error(
-                data.error ||
-                "Erreur météo"
-            );
+        if (!data.success) {
+            throw new Error(data.error);
         }
 
-        document.getElementById(
-            "weatherTemp"
-        ).textContent =
-            data.temperature;
+        document.getElementById("weatherTemp")
+            .textContent = data.temperature;
 
-        document.getElementById(
-            "weatherFeels"
-        ).textContent =
-            data.feelsLike;
+        document.getElementById("weatherFeels")
+            .textContent = data.feelsLike;
 
-        document.getElementById(
-            "weatherHumidity"
-        ).textContent =
-            data.humidity;
+        document.getElementById("weatherHumidity")
+            .textContent = data.humidity;
 
-        document.getElementById(
-            "weatherWind"
-        ).textContent =
-            data.wind;
+        document.getElementById("weatherWind")
+            .textContent = data.wind;
 
-        description.textContent =
-            data.description;
+        document.getElementById("weatherDescription")
+            .textContent = data.description;
 
-        const icon =
-            document.getElementById(
-                "weatherIcon"
-            );
+        if (data.icon) {
 
-        if (
-            icon &&
-            data.icon
-        ) {
-
-            icon.src =
+            document.getElementById("weatherIcon")
+                .src =
                 `https://openweathermap.org/img/wn/${data.icon}@2x.png`;
-
         }
 
     } catch (error) {
 
-        console.error(
-            "Erreur météo :",
-            error
-        );
+        console.error(error);
 
         description.textContent =
             "Météo indisponible";
-
     }
-
 }
 
 
@@ -1408,88 +987,38 @@ async function loadWeather() {
 async function checkSystemStatus() {
 
     const dot =
-        document.getElementById(
-            "headerStatusDot"
-        );
+        document.getElementById("headerStatusDot");
 
     const headerText =
-        document.getElementById(
-            "headerStatusText"
-        );
+        document.getElementById("headerStatusText");
 
     const generalText =
-        document.getElementById(
-            "generalStatusText"
-        );
+        document.getElementById("generalStatusText");
 
     try {
 
         const response =
-            await fetch(
-                "/light/status"
-            );
+            await fetch("/light/status");
 
         const data =
             await response.json();
 
-        if (
-            !response.ok ||
-            data.success === false
-        ) {
-            throw new Error(
-                "Système indisponible"
-            );
+        if (data.success === false) {
+            throw new Error("reponse invalide");
         }
 
-        if (dot) {
-            dot.style.background =
-                "#4ade80";
-        }
-
-        if (headerText) {
-            headerText.textContent =
-                "Système en ligne";
-        }
-
-        if (generalText) {
-
-            generalText.textContent =
-                "● En ligne";
-
-            generalText.className =
-                "system-online";
-
-        }
+        dot.style.background = "#4ade80";
+        headerText.textContent = "Système en ligne";
+        generalText.textContent = "● En ligne";
+        generalText.style.color = "#4ade80";
 
     } catch (error) {
 
-        console.error(
-            "État système :",
-            error
-        );
-
-        if (dot) {
-            dot.style.background =
-                "#ef4444";
-        }
-
-        if (headerText) {
-            headerText.textContent =
-                "Système hors ligne";
-        }
-
-        if (generalText) {
-
-            generalText.textContent =
-                "● Hors ligne";
-
-            generalText.className =
-                "system-offline";
-
-        }
-
+        dot.style.background = "#ef4444";
+        headerText.textContent = "Système hors ligne";
+        generalText.textContent = "● Hors ligne";
+        generalText.style.color = "#ef4444";
     }
-
 }
 
 
@@ -1497,25 +1026,16 @@ async function checkSystemStatus() {
    🚀 DÉMARRAGE
    ============================================================ */
 
-document.addEventListener(
-    "DOMContentLoaded",
-    () => {
+loadWeather();
 
-        loadLightStatus();
+loadLightStatus();
 
-        loadLumaStatus();
+loadLumaStatus();
 
-        loadWeather();
-
-        checkSystemStatus();
-
-    }
-);
+checkSystemStatus();
 
 
-/* ============================================================
-   🔄 ACTUALISATION
-   ============================================================ */
+/* Actualisation */
 
 setInterval(
     loadLightStatus,
@@ -1535,36 +1055,6 @@ setInterval(
 setInterval(
     loadWeather,
     300000
-);
-
-
-/* ============================================================
-   🛡️ PROTECTION
-   ============================================================ */
-
-window.addEventListener(
-    "error",
-    event => {
-
-        console.error(
-            "Erreur dashboard :",
-            event.error ||
-            event.message
-        );
-
-    }
-);
-
-window.addEventListener(
-    "unhandledrejection",
-    event => {
-
-        console.error(
-            "Erreur Promise dashboard :",
-            event.reason
-        );
-
-    }
 );
 
 </script>
