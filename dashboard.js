@@ -129,7 +129,7 @@ app.get("/weather", async (req, res) => {
 
 
 // ============================================================
-// 💡 LUMIÈRES
+// 💡 LUMIÈRES — CHAMBRE
 // ============================================================
 
 app.get("/light/on", async (req, res) => {
@@ -274,6 +274,151 @@ app.post(
         }
     }
 );
+
+
+// ============================================================
+// 💡 LUMA — SALON
+// Dashboard → Palmi Smart Home → Tuya Cloud
+// ============================================================
+
+app.get("/luma/on", async (req, res) => {
+    try {
+
+        const r =
+            await fetch(
+                `${SMARTHOME_URL}/luma/on`
+            );
+
+        const data =
+            await r.json();
+
+        res
+            .status(r.status)
+            .json(data);
+
+    } catch (error) {
+
+        console.error(
+            "Erreur proxy luma/on :",
+            error
+        );
+
+        res.status(502).json({
+            success: false,
+            error:
+                "palmi-smarthome injoignable"
+        });
+    }
+});
+
+
+app.get("/luma/off", async (req, res) => {
+    try {
+
+        const r =
+            await fetch(
+                `${SMARTHOME_URL}/luma/off`
+            );
+
+        const data =
+            await r.json();
+
+        res
+            .status(r.status)
+            .json(data);
+
+    } catch (error) {
+
+        console.error(
+            "Erreur proxy luma/off :",
+            error
+        );
+
+        res.status(502).json({
+            success: false,
+            error:
+                "palmi-smarthome injoignable"
+        });
+    }
+});
+
+
+app.get("/luma/status", async (req, res) => {
+    try {
+
+        const r =
+            await fetch(
+                `${SMARTHOME_URL}/luma/status`
+            );
+
+        const data =
+            await r.json();
+
+        res
+            .status(r.status)
+            .json(data);
+
+    } catch (error) {
+
+        console.error(
+            "Erreur proxy luma/status :",
+            error
+        );
+
+        res.status(502).json({
+            success: false,
+            error:
+                "palmi-smarthome injoignable"
+        });
+    }
+});
+
+
+app.get("/luma/brightness", async (req, res) => {
+    try {
+
+        const value =
+            Number(req.query.value);
+
+        if (
+            !Number.isFinite(value) ||
+            value < 0 ||
+            value > 100
+        ) {
+
+            return res.status(400).json({
+                success: false,
+                error:
+                    "value invalide (0-100)"
+            });
+        }
+
+        const r =
+            await fetch(
+                `${SMARTHOME_URL}/luma/brightness?value=${value}`
+            );
+
+        const data =
+            await r.json();
+
+        res
+            .status(r.status)
+            .json(data);
+
+    } catch (error) {
+
+        console.error(
+            "Erreur proxy luma/brightness :",
+            error
+        );
+
+        res.status(502).json({
+            success: false,
+            error:
+                "palmi-smarthome injoignable"
+        });
+    }
+});
 
 
 // ============================================================
