@@ -322,11 +322,11 @@ button:disabled {
 
 <main class="grid">
 
-    <!-- 💡 LUMIÈRE -->
+    <!-- 💡 LUMIÈRE CHAMBRE -->
 
     <section class="card">
         <div class="card-title">
-            <h2>💡 Lumière</h2>
+            <h2>💡 Lumière — Chambre</h2>
             <span class="card-icon">💡</span>
         </div>
 
@@ -377,6 +377,71 @@ button:disabled {
 
                     <button
                         onclick="changeBrightness(10)"
+                    >
+                        +
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+
+    <!-- 💡 LUMA SALON -->
+
+    <section class="card">
+        <div class="card-title">
+            <h2>💡 Lumière — Salon</h2>
+            <span class="card-icon">🌴</span>
+        </div>
+
+        <div class="rows">
+
+            <div class="row">
+                <div>
+                    <div class="row-title">
+                        État
+                    </div>
+
+                    <div
+                        class="row-subtitle"
+                        id="lumaState"
+                    >
+                        Chargement...
+                    </div>
+                </div>
+
+                <button
+                    id="lumaButton"
+                    onclick="toggleLuma()"
+                >
+                    ON / OFF
+                </button>
+            </div>
+
+            <div class="row">
+                <div>
+                    <div class="row-title">
+                        Luminosité
+                    </div>
+
+                    <div
+                        class="row-subtitle"
+                        id="lumaBrightness"
+                    >
+                        -- %
+                    </div>
+                </div>
+
+                <div>
+                    <button
+                        onclick="changeLumaBrightness(-10)"
+                    >
+                        −
+                    </button>
+
+                    <button
+                        onclick="changeLumaBrightness(10)"
                     >
                         +
                     </button>
@@ -480,85 +545,51 @@ button:disabled {
 
         <div class="remote">
 
-            <button
-                class="empty"
-                disabled
-            >
-            </button>
+            <button class="empty" disabled></button>
 
-            <button
-                onclick="tv(1,'up')"
-            >
+            <button onclick="tv(1,'up')">
                 ▲
             </button>
 
-            <button
-                class="empty"
-                disabled
-            >
-            </button>
+            <button class="empty" disabled></button>
 
-
-            <button
-                onclick="tv(1,'left')"
-            >
+            <button onclick="tv(1,'left')">
                 ◀
             </button>
 
-            <button
-                onclick="tv(1,'ok')"
-            >
+            <button onclick="tv(1,'ok')">
                 OK
             </button>
 
-            <button
-                onclick="tv(1,'right')"
-            >
+            <button onclick="tv(1,'right')">
                 ▶
             </button>
 
-
-            <button
-                onclick="tv(1,'back')"
-            >
+            <button onclick="tv(1,'back')">
                 ↩
             </button>
 
-            <button
-                onclick="tv(1,'down')"
-            >
+            <button onclick="tv(1,'down')">
                 ▼
             </button>
 
-            <button
-                onclick="tv(1,'home')"
-            >
+            <button onclick="tv(1,'home')">
                 🏠
             </button>
 
-
-            <button
-                onclick="tv(1,'volume_down')"
-            >
+            <button onclick="tv(1,'volume_down')">
                 🔉
             </button>
 
-            <button
-                onclick="tv(1,'mute')"
-            >
+            <button onclick="tv(1,'mute')">
                 🔇
             </button>
 
-            <button
-                onclick="tv(1,'volume_up')"
-            >
+            <button onclick="tv(1,'volume_up')">
                 🔊
             </button>
 
-
-            <button
-                onclick="tv(1,'power')"
-            >
+            <button onclick="tv(1,'power')">
                 ⏻
             </button>
 
@@ -588,9 +619,7 @@ button:disabled {
                 </div>
             </div>
 
-            <div
-                id="generalStatusText"
-            >
+            <div id="generalStatusText">
                 ● Vérification...
             </div>
 
@@ -601,26 +630,25 @@ button:disabled {
 </main>
 
 </div>
+
 <script>
 
 /*
 ============================================================
 🌴 PALMI SMART HOME
 JavaScript du dashboard
-
-IMPORTANT :
-Le CSS est fermé AVANT ce script.
-Cela évite qu'une erreur de structure transforme
-le dashboard en simple fond marron.
 ============================================================
 */
 
 let lightOn = false;
 let brightness = 50;
 
+let lumaOn = false;
+let lumaBrightness = 50;
+
 
 /* ============================================================
-   💡 LUMIÈRE
+   💡 LUMIÈRE — CHAMBRE
    ============================================================ */
 
 async function loadLightStatus() {
@@ -763,21 +791,7 @@ async function changeBrightness(amount) {
 
         const response =
             await fetch(
-                "/light/brightness",
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            brightness:
-                                newBrightness
-                        })
-                }
+                `/light/brightness?value=${newBrightness}`
             );
 
         const data =
@@ -817,6 +831,218 @@ async function changeBrightness(amount) {
 }
 
 
+/* ============================================================
+   💡 LUMA — SALON
+   ============================================================ */
+
+async function loadLumaStatus() {
+
+    try {
+
+        const response =
+            await fetch("/luma/status");
+
+        const data =
+            await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.error ||
+                "Erreur Luma"
+            );
+        }
+
+        if (Array.isArray(data.result)) {
+
+            const dps = {};
+
+            for (const item of data.result) {
+                dps[item.code] = item.value;
+            }
+
+            if (
+                typeof dps.switch_led === "boolean"
+            ) {
+                lumaOn =
+                    dps.switch_led;
+            }
+
+            if (
+                typeof dps.bright_value === "number"
+            ) {
+                lumaBrightness =
+                    Math.round(
+                        (dps.bright_value / 1000) * 100
+                    );
+            }
+
+        }
+
+        updateLuma();
+
+    } catch (error) {
+
+        console.error(
+            "Erreur état Luma :",
+            error
+        );
+
+        const state =
+            document.getElementById(
+                "lumaState"
+            );
+
+        if (state) {
+            state.textContent =
+                "Indisponible";
+        }
+
+    }
+
+}
+
+
+async function toggleLuma() {
+
+    const endpoint =
+        lumaOn
+            ? "/luma/off"
+            : "/luma/on";
+
+    try {
+
+        const response =
+            await fetch(endpoint);
+
+        const data =
+            await response.json();
+
+        if (
+            !response.ok ||
+            data.success === false
+        ) {
+
+            alert(
+                "Impossible de contrôler Luma."
+            );
+
+            return;
+        }
+
+        lumaOn =
+            !lumaOn;
+
+        updateLuma();
+
+    } catch (error) {
+
+        console.error(
+            "Erreur Luma :",
+            error
+        );
+
+        alert(
+            "Erreur de connexion au serveur."
+        );
+
+    }
+
+}
+
+
+function updateLuma() {
+
+    const button =
+        document.getElementById(
+            "lumaButton"
+        );
+
+    const state =
+        document.getElementById(
+            "lumaState"
+        );
+
+    const brightness =
+        document.getElementById(
+            "lumaBrightness"
+        );
+
+    if (button) {
+
+        button.classList.toggle(
+            "button-active",
+            lumaOn
+        );
+
+    }
+
+    if (state) {
+
+        state.textContent =
+            lumaOn
+                ? "Allumée"
+                : "Éteinte";
+
+    }
+
+    if (brightness) {
+
+        brightness.textContent =
+            lumaBrightness + " %";
+
+    }
+
+}
+
+
+async function changeLumaBrightness(amount) {
+
+    const newBrightness =
+        Math.max(
+            0,
+            Math.min(
+                100,
+                lumaBrightness + amount
+            )
+        );
+
+    try {
+
+        const response =
+            await fetch(
+                `/luma/brightness?value=${newBrightness}`
+            );
+
+        const data =
+            await response.json();
+
+        if (
+            !response.ok ||
+            data.success === false
+        ) {
+
+            alert(
+                "Impossible de modifier la luminosité de Luma."
+            );
+
+            return;
+        }
+
+        lumaBrightness =
+            newBrightness;
+
+        updateLuma();
+
+    } catch (error) {
+
+        console.error(
+            "Erreur luminosité Luma :",
+            error
+        );
+
+    }
+
+}
 /* ============================================================
    📺 TV
    Dashboard → Railway → Worker → A10 → TV
@@ -1101,6 +1327,8 @@ document.addEventListener(
 
         loadLightStatus();
 
+        loadLumaStatus();
+
         checkSystemStatus();
 
     }
@@ -1115,6 +1343,11 @@ document.addEventListener(
 
 setInterval(
     loadLightStatus,
+    10000
+);
+
+setInterval(
+    loadLumaStatus,
     10000
 );
 
