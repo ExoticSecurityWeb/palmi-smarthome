@@ -1180,7 +1180,7 @@ async function runDinnerAutomation() {
     await palmiLuma.setBrightnessLuma(100);
 
     await notifyAll(
-      "🍽️ Il est l'heure du dîner ! Palmi a allumé Luma à 100 %. 🌴💡"
+      "🍽️ Il est l'heure du dîner ! Palmi a allumé la lumière du salon. Bon appétit ! 🌴💡"
     );
   } catch (err) {
     console.error(
