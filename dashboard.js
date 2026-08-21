@@ -4,12 +4,18 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// URL publique du service palmi-smarthome
+// ============================================================
+// 🌴 PALMI SMART HOME
+// ============================================================
+
 const SMARTHOME_URL =
     process.env.PALMI_SMARTHOME_URL ||
     "https://palmi-smarthome-production.up.railway.app";
 
-// 🌴 Worker Palmi TV
+// ============================================================
+// 📺 WORKER TV
+// ============================================================
+
 const PALMI_TV_WORKER_URL =
     process.env.PALMI_TV_WORKER_URL ||
     "https://palmi-tv.vosprojets.workers.dev";
@@ -35,7 +41,9 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "dashboard.html"));
+    res.sendFile(
+        path.join(__dirname, "dashboard.html")
+    );
 });
 
 
@@ -44,16 +52,20 @@ app.get("/", (req, res) => {
 // ============================================================
 
 app.get("/weather", async (req, res) => {
+
     try {
+
         const apiKey =
             process.env.OPENWEATHER_API_KEY;
 
         if (!apiKey) {
+
             return res.status(500).json({
                 success: false,
                 error:
                     "OPENWEATHER_API_KEY manquante"
             });
+
         }
 
         const latitude = 43.643;
@@ -74,42 +86,55 @@ app.get("/weather", async (req, res) => {
             await response.json();
 
         if (!response.ok) {
-            return res.status(response.status).json({
-                success: false,
-                error:
-                    data.message ||
-                    "Erreur OpenWeather"
-            });
+
+            return res
+                .status(response.status)
+                .json({
+                    success: false,
+                    error:
+                        data.message ||
+                        "Erreur OpenWeather"
+                });
+
         }
 
-        res.json({
+        return res.json({
+
             success: true,
+
             city:
                 data.name ||
                 "Heugas",
+
             temperature:
                 Math.round(
                     data.main.temp
                 ),
+
             feelsLike:
                 Math.round(
                     data.main.feels_like
                 ),
+
             humidity:
                 data.main.humidity,
+
             description:
                 data.weather?.[0]
                     ?.description ||
                 "",
+
             icon:
                 data.weather?.[0]
                     ?.icon ||
                 "",
+
             wind:
                 Math.round(
                     (data.wind?.speed || 0) *
                     3.6
                 )
+
         });
 
     } catch (error) {
@@ -119,32 +144,35 @@ app.get("/weather", async (req, res) => {
             error
         );
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error:
                 "Impossible de récupérer la météo"
         });
+
     }
+
 });
 
 
 // ============================================================
-// 💡 LUMIÈRES — CHAMBRE
+// 💡 LUMIÈRE — CHAMBRE
 // ============================================================
 
 app.get("/light/on", async (req, res) => {
+
     try {
 
-        const r =
+        const response =
             await fetch(
                 `${SMARTHOME_URL}/light/on`
             );
 
         const data =
-            await r.json();
+            await response.json();
 
-        res
-            .status(r.status)
+        return res
+            .status(response.status)
             .json(data);
 
     } catch (error) {
@@ -154,28 +182,31 @@ app.get("/light/on", async (req, res) => {
             error
         );
 
-        res.status(502).json({
+        return res.status(502).json({
             success: false,
             error:
                 "palmi-smarthome injoignable"
         });
+
     }
+
 });
 
 
 app.get("/light/off", async (req, res) => {
+
     try {
 
-        const r =
+        const response =
             await fetch(
                 `${SMARTHOME_URL}/light/off`
             );
 
         const data =
-            await r.json();
+            await response.json();
 
-        res
-            .status(r.status)
+        return res
+            .status(response.status)
             .json(data);
 
     } catch (error) {
@@ -185,28 +216,31 @@ app.get("/light/off", async (req, res) => {
             error
         );
 
-        res.status(502).json({
+        return res.status(502).json({
             success: false,
             error:
                 "palmi-smarthome injoignable"
         });
+
     }
+
 });
 
 
 app.get("/light/status", async (req, res) => {
+
     try {
 
-        const r =
+        const response =
             await fetch(
                 `${SMARTHOME_URL}/light/status`
             );
 
         const data =
-            await r.json();
+            await response.json();
 
-        res
-            .status(r.status)
+        return res
+            .status(response.status)
             .json(data);
 
     } catch (error) {
@@ -216,12 +250,14 @@ app.get("/light/status", async (req, res) => {
             error
         );
 
-        res.status(502).json({
+        return res.status(502).json({
             success: false,
             error:
                 "palmi-smarthome injoignable"
         });
+
     }
+
 });
 
 
@@ -245,18 +281,19 @@ app.post(
                     error:
                         "brightness invalide (0-100)"
                 });
+
             }
 
-            const r =
+            const response =
                 await fetch(
                     `${SMARTHOME_URL}/light/brightness?value=${value}`
                 );
 
             const data =
-                await r.json();
+                await response.json();
 
-            res
-                .status(r.status)
+            return res
+                .status(response.status)
                 .json(data);
 
         } catch (error) {
@@ -266,34 +303,36 @@ app.post(
                 error
             );
 
-            res.status(502).json({
+            return res.status(502).json({
                 success: false,
                 error:
                     "palmi-smarthome injoignable"
             });
+
         }
+
     }
 );
 
 
 // ============================================================
 // 💡 LUMA — SALON
-// Dashboard → Palmi Smart Home → Tuya Cloud
 // ============================================================
 
 app.get("/luma/on", async (req, res) => {
+
     try {
 
-        const r =
+        const response =
             await fetch(
                 `${SMARTHOME_URL}/luma/on`
             );
 
         const data =
-            await r.json();
+            await response.json();
 
-        res
-            .status(r.status)
+        return res
+            .status(response.status)
             .json(data);
 
     } catch (error) {
@@ -303,28 +342,31 @@ app.get("/luma/on", async (req, res) => {
             error
         );
 
-        res.status(502).json({
+        return res.status(502).json({
             success: false,
             error:
                 "palmi-smarthome injoignable"
         });
+
     }
+
 });
 
 
 app.get("/luma/off", async (req, res) => {
+
     try {
 
-        const r =
+        const response =
             await fetch(
                 `${SMARTHOME_URL}/luma/off`
             );
 
         const data =
-            await r.json();
+            await response.json();
 
-        res
-            .status(r.status)
+        return res
+            .status(response.status)
             .json(data);
 
     } catch (error) {
@@ -334,28 +376,31 @@ app.get("/luma/off", async (req, res) => {
             error
         );
 
-        res.status(502).json({
+        return res.status(502).json({
             success: false,
             error:
                 "palmi-smarthome injoignable"
         });
+
     }
+
 });
 
 
 app.get("/luma/status", async (req, res) => {
+
     try {
 
-        const r =
+        const response =
             await fetch(
                 `${SMARTHOME_URL}/luma/status`
             );
 
         const data =
-            await r.json();
+            await response.json();
 
-        res
-            .status(r.status)
+        return res
+            .status(response.status)
             .json(data);
 
     } catch (error) {
@@ -365,65 +410,73 @@ app.get("/luma/status", async (req, res) => {
             error
         );
 
-        res.status(502).json({
+        return res.status(502).json({
             success: false,
             error:
                 "palmi-smarthome injoignable"
         });
+
     }
+
 });
 
 
-app.get("/luma/brightness", async (req, res) => {
-    try {
+app.get(
+    "/luma/brightness",
+    async (req, res) => {
 
-        const value =
-            Number(req.query.value);
+        try {
 
-        if (
-            !Number.isFinite(value) ||
-            value < 0 ||
-            value > 100
-        ) {
+            const value =
+                Number(req.query.value);
 
-            return res.status(400).json({
-                success: false,
-                error:
-                    "value invalide (0-100)"
-            });
-        }
+            if (
+                !Number.isFinite(value) ||
+                value < 0 ||
+                value > 100
+            ) {
 
-        const r =
-            await fetch(
-                `${SMARTHOME_URL}/luma/brightness?value=${value}`
+                return res.status(400).json({
+                    success: false,
+                    error:
+                        "value invalide (0-100)"
+                });
+
+            }
+
+            const response =
+                await fetch(
+                    `${SMARTHOME_URL}/luma/brightness?value=${value}`
+                );
+
+            const data =
+                await response.json();
+
+            return res
+                .status(response.status)
+                .json(data);
+
+        } catch (error) {
+
+            console.error(
+                "Erreur proxy luma/brightness :",
+                error
             );
 
-        const data =
-            await r.json();
+            return res.status(502).json({
+                success: false,
+                error:
+                    "palmi-smarthome injoignable"
+            });
 
-        res
-            .status(r.status)
-            .json(data);
+        }
 
-    } catch (error) {
-
-        console.error(
-            "Erreur proxy luma/brightness :",
-            error
-        );
-
-        res.status(502).json({
-            success: false,
-            error:
-                "palmi-smarthome injoignable"
-        });
     }
-});
+);
 
 
 // ============================================================
-// 📺 TV
-// Dashboard → Worker → A10 → bridge TV existant → TV Stick
+// 📺 TV 1 — GOOGLE TV STICK
 // ============================================================
 
 app.post(
@@ -447,8 +500,6 @@ app.post(
                 )
             );
 
-
-        // TV 1 = Google TV Stick
         if (number !== "1") {
 
             return res.status(501).json({
@@ -456,10 +507,9 @@ app.post(
                 error:
                     "TV 2 n'est pas encore branchée."
             });
+
         }
 
-
-        // Vérification de la commande
         if (
             !TV_COMMANDS.includes(action)
         ) {
@@ -471,10 +521,9 @@ app.post(
                 commands:
                     TV_COMMANDS
             });
+
         }
 
-
-        // Token Worker
         if (!PALMI_TV_TOKEN) {
 
             return res.status(500).json({
@@ -482,15 +531,14 @@ app.post(
                 error:
                     "PALMI_TV_TOKEN manquante dans Railway"
             });
-        }
 
+        }
 
         try {
 
             console.log(
                 `📺 TV 1 → ${action} x${count}`
             );
-
 
             const response =
                 await fetch(
@@ -514,29 +562,32 @@ app.post(
                     }
                 );
 
-
             const data =
                 await response.json();
-
 
             if (!response.ok) {
 
                 return res
                     .status(response.status)
                     .json(data);
+
             }
 
-
             return res.json({
+
                 success: true,
+
                 tv: 1,
+
                 action,
+
                 count,
+
                 command:
                     data.command ||
                     null
-            });
 
+            });
 
         } catch (error) {
 
@@ -550,7 +601,9 @@ app.post(
                 error:
                     "Palmi TV Worker injoignable"
             });
+
         }
+
     }
 );
 
@@ -575,5 +628,6 @@ app.listen(
         console.log(
             `   Worker TV : ${PALMI_TV_WORKER_URL}`
         );
+
     }
 );
