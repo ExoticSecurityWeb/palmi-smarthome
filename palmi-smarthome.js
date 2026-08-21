@@ -8,6 +8,7 @@ const fs = require("fs");
 const path = require("path");
 const { WebSocketServer } = require("ws");
 const http = require("http");
+const palmiLuma = require("./Palmi-Luma");
 
 const app = express();
 app.use(express.json());
@@ -666,11 +667,13 @@ app.get(
   }
 );
 
+app.use("/luma", palmiLuma.router);
+
 app.get(
   "/",
   (req, res) => {
     res.send(
-      "Palmi Smart Home — routes: /light/on, /light/off, /light/brightness?value=0-100, /light/white?warmth=50&brightness=100, /light/color?hex=RRGGBB, /debug-functions"
+      "Palmi Smart Home — routes: /light/on, /light/off, /light/brightness?value=0-100, /light/white?warmth=50&brightness=100, /light/color?hex=RRGGBB, /debug-functions, /luma/on, /luma/off, /luma/brightness?value=0-100, /luma/white?warmth=50&brightness=100, /luma/color?hex=RRGGBB, /luma/debug-functions"
     );
   }
 );
@@ -1582,6 +1585,137 @@ if (TELEGRAM_TOKEN) {
         }
 
         // ======================================================
+        // COMMANDES LUMA (séjour) — vérifiées avant la LED
+        // pour que "luma" soit toujours prioritaire
+        // ======================================================
+
+        if (lowerText.includes("luma")) {
+          const wantsLumaOff =
+            lowerText.includes("éteins") ||
+            lowerText.includes("eteins") ||
+            lowerText.includes("éteint") ||
+            lowerText.includes("eteint") ||
+            lowerText.includes("éteindre") ||
+            lowerText.includes("eteindre");
+
+          if (wantsLumaOff) {
+            delete automationCreation[chatId];
+
+            await palmiLuma.turnOffLuma();
+
+            await bot.sendMessage(
+              chatId,
+              "💡 Luma éteinte ! 🌴"
+            );
+
+            return;
+          }
+
+          const wantsLumaOn =
+            lowerText.includes("allume");
+
+          if (wantsLumaOn) {
+            delete automationCreation[chatId];
+
+            await palmiLuma.turnOnLuma();
+
+            await bot.sendMessage(
+              chatId,
+              "💡 Luma allumée ! 🌴"
+            );
+
+            return;
+          }
+
+          const lumaBrightnessMatch = lowerText.match(
+            /(?:luminosité|luminosite).*?(\d{1,3})/
+          );
+
+          if (lumaBrightnessMatch) {
+            const percent = parseInt(
+              lumaBrightnessMatch[1],
+              10
+            );
+
+            if (percent >= 0 && percent <= 100) {
+              delete automationCreation[chatId];
+
+              await palmiLuma.setBrightnessLuma(percent);
+
+              await bot.sendMessage(
+                chatId,
+                `💡 Luminosité Luma réglée à ${percent} %.`
+              );
+
+              return;
+            }
+          }
+
+          if (lowerText.includes("baisse")) {
+            delete automationCreation[chatId];
+
+            await palmiLuma.setBrightnessLuma(30);
+
+            await bot.sendMessage(
+              chatId,
+              "💡 Luminosité Luma baissée à 30 %. 🌴"
+            );
+
+            return;
+          }
+
+          if (lowerText.includes("monte")) {
+            delete automationCreation[chatId];
+
+            await palmiLuma.setBrightnessLuma(100);
+
+            await bot.sendMessage(
+              chatId,
+              "💡 Luminosité Luma montée à 100 %. 🌴"
+            );
+
+            return;
+          }
+
+          if (lowerText.includes("blanche")) {
+            delete automationCreation[chatId];
+
+            await palmiLuma.setWhiteLuma(50, 100);
+
+            await bot.sendMessage(
+              chatId,
+              "🤍 Luma en blanc activée !"
+            );
+
+            return;
+          }
+
+          const lumaColorText = lowerText
+            .replace("luma", " ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+          for (
+            const [name, hex] of Object.entries(
+              NAMED_COLORS
+            )
+          ) {
+            if (lumaColorText.includes(`couleur ${name}`)) {
+              delete automationCreation[chatId];
+
+              await palmiLuma.setColorLuma(hex);
+
+              await bot.sendMessage(
+                chatId,
+                `🎨 Couleur ${name} activée sur Luma ! 🌴`
+              );
+
+              return;
+            }
+          }
+        }
+
+        // ======================================================
         // COMMANDES LUMIERE PRIORITAIRES
         // ======================================================
 
@@ -2154,7 +2288,7 @@ if (TELEGRAM_TOKEN) {
           await bot.sendMessage(
             chatId,
             "👋 Salut ! Je suis Palmi Smart Home 🌴🤖\n\n" +
-              "💡 Commandes lumière :\n" +
+              "💡 Commandes lumière — LED (chambre) :\n" +
               "• allume ma lumière\n" +
               "• éteins la lumière\n" +
               "• luminosité à 50\n" +
@@ -2162,6 +2296,14 @@ if (TELEGRAM_TOKEN) {
               "• monte la luminosité\n" +
               "• lumière blanche\n" +
               "• couleur rouge/bleu/vert/etc.\n\n" +
+              "💡 Commandes lumière — Luma (séjour) :\n" +
+              "• allume Luma\n" +
+              "• éteins Luma\n" +
+              "• luminosité Luma à 50\n" +
+              "• baisse Luma\n" +
+              "• monte Luma\n" +
+              "• lumière blanche Luma\n" +
+              "• couleur Luma rouge/bleu/vert/etc.\n\n" +
               "📺 Commandes TV (francais ou anglais) :\n" +
               "• /tv haut / up [nombre]\n" +
               "• /tv bas / down [nombre]\n" +
