@@ -202,6 +202,10 @@ button:disabled {
     border-color: rgba(215,165,111,.35);
 }
 
+.empty {
+    visibility: hidden;
+}
+
 .remote {
     display: grid;
     grid-template-columns: repeat(3,1fr);
@@ -212,10 +216,6 @@ button:disabled {
 
 .remote button {
     height: 48px;
-}
-
-.empty {
-    visibility: hidden;
 }
 
 .temperature {
@@ -303,6 +303,7 @@ button:disabled {
 <header class="header">
     <div>
         <div class="logo">🌴 Palmi Smart Home</div>
+
         <div class="subtitle">
             Contrôle de la caravane connectée
         </div>
@@ -322,9 +323,12 @@ button:disabled {
 
 <main class="grid">
 
-    <!-- 💡 LUMIÈRE CHAMBRE -->
+    <!-- =====================================================
+         💡 CHAMBRE
+         ===================================================== -->
 
     <section class="card">
+
         <div class="card-title">
             <h2>💡 Lumière — Chambre</h2>
             <span class="card-icon">💡</span>
@@ -333,6 +337,7 @@ button:disabled {
         <div class="rows">
 
             <div class="row">
+
                 <div>
                     <div class="row-title">
                         État
@@ -352,9 +357,11 @@ button:disabled {
                 >
                     ON / OFF
                 </button>
+
             </div>
 
             <div class="row">
+
                 <div>
                     <div class="row-title">
                         Luminosité
@@ -364,11 +371,12 @@ button:disabled {
                         class="row-subtitle"
                         id="brightness"
                     >
-                        50 %
+                        -- %
                     </div>
                 </div>
 
                 <div>
+
                     <button
                         onclick="changeBrightness(-10)"
                     >
@@ -380,16 +388,22 @@ button:disabled {
                     >
                         +
                     </button>
+
                 </div>
+
             </div>
 
         </div>
+
     </section>
 
 
-    <!-- 💡 LUMA SALON -->
+    <!-- =====================================================
+         💡 SALON
+         ===================================================== -->
 
     <section class="card">
+
         <div class="card-title">
             <h2>💡 Lumière — Salon</h2>
             <span class="card-icon">🌴</span>
@@ -398,6 +412,7 @@ button:disabled {
         <div class="rows">
 
             <div class="row">
+
                 <div>
                     <div class="row-title">
                         État
@@ -417,9 +432,11 @@ button:disabled {
                 >
                     ON / OFF
                 </button>
+
             </div>
 
             <div class="row">
+
                 <div>
                     <div class="row-title">
                         Luminosité
@@ -434,6 +451,7 @@ button:disabled {
                 </div>
 
                 <div>
+
                     <button
                         onclick="changeLumaBrightness(-10)"
                     >
@@ -445,16 +463,22 @@ button:disabled {
                     >
                         +
                     </button>
+
                 </div>
+
             </div>
 
         </div>
+
     </section>
 
 
-    <!-- 🌦️ MÉTÉO -->
+    <!-- =====================================================
+         🌦️ MÉTÉO
+         ===================================================== -->
 
     <section class="card">
+
         <div class="card-title">
             <h2>🌦️ Météo</h2>
             <span class="card-icon">☁️</span>
@@ -469,6 +493,7 @@ button:disabled {
             >
 
             <div>
+
                 <div>
                     <span
                         id="weatherTemp"
@@ -485,6 +510,7 @@ button:disabled {
                 >
                     Chargement...
                 </div>
+
             </div>
 
         </div>
@@ -492,6 +518,7 @@ button:disabled {
         <div class="weather-grid">
 
             <div class="weather-item">
+
                 <div
                     id="weatherFeels"
                     class="weather-value"
@@ -502,9 +529,11 @@ button:disabled {
                 <div class="weather-label">
                     Ressenti °C
                 </div>
+
             </div>
 
             <div class="weather-item">
+
                 <div
                     id="weatherHumidity"
                     class="weather-value"
@@ -515,9 +544,11 @@ button:disabled {
                 <div class="weather-label">
                     Humidité %
                 </div>
+
             </div>
 
             <div class="weather-item">
+
                 <div
                     id="weatherWind"
                     class="weather-value"
@@ -528,13 +559,15 @@ button:disabled {
                 <div class="weather-label">
                     Vent km/h
                 </div>
+
             </div>
 
         </div>
+
     </section>
-
-
-    <!-- 📺 TV -->
+    <!-- =====================================================
+         📺 TV
+         ===================================================== -->
 
     <section class="card card-wide">
 
@@ -545,51 +578,83 @@ button:disabled {
 
         <div class="remote">
 
-            <button class="empty" disabled></button>
+            <button
+                class="empty"
+                disabled
+            ></button>
 
-            <button onclick="tv(1,'up')">
+            <button
+                onclick="tv(1,'up')"
+            >
                 ▲
             </button>
 
-            <button class="empty" disabled></button>
+            <button
+                class="empty"
+                disabled
+            ></button>
 
-            <button onclick="tv(1,'left')">
+
+            <button
+                onclick="tv(1,'left')"
+            >
                 ◀
             </button>
 
-            <button onclick="tv(1,'ok')">
+            <button
+                onclick="tv(1,'ok')"
+            >
                 OK
             </button>
 
-            <button onclick="tv(1,'right')">
+            <button
+                onclick="tv(1,'right')"
+            >
                 ▶
             </button>
 
-            <button onclick="tv(1,'back')">
+
+            <button
+                onclick="tv(1,'back')"
+            >
                 ↩
             </button>
 
-            <button onclick="tv(1,'down')">
+            <button
+                onclick="tv(1,'down')"
+            >
                 ▼
             </button>
 
-            <button onclick="tv(1,'home')">
+            <button
+                onclick="tv(1,'home')"
+            >
                 🏠
             </button>
 
-            <button onclick="tv(1,'volume_down')">
+
+            <button
+                onclick="tv(1,'volume_down')"
+            >
                 🔉
             </button>
 
-            <button onclick="tv(1,'mute')">
+            <button
+                onclick="tv(1,'mute')"
+            >
                 🔇
             </button>
 
-            <button onclick="tv(1,'volume_up')">
+            <button
+                onclick="tv(1,'volume_up')"
+            >
                 🔊
             </button>
 
-            <button onclick="tv(1,'power')">
+
+            <button
+                onclick="tv(1,'power')"
+            >
                 ⏻
             </button>
 
@@ -598,7 +663,99 @@ button:disabled {
     </section>
 
 
-    <!-- 🏠 SYSTÈME -->
+    <!-- =====================================================
+         📽️ CHROMECAST
+         ===================================================== -->
+
+    <section class="card card-wide">
+
+        <div class="card-title">
+            <h2>📽️ Chromecast</h2>
+            <span class="card-icon">📺</span>
+        </div>
+
+        <div class="rows">
+
+            <div class="row">
+
+                <div>
+                    <div class="row-title">
+                        Lecture
+                    </div>
+
+                    <div class="row-subtitle">
+                        Contrôle de la lecture sur le Chromecast
+                    </div>
+                </div>
+
+                <div>
+
+                    <button
+                        onclick="cast('play')"
+                    >
+                        ▶️
+                    </button>
+
+                    <button
+                        onclick="cast('pause')"
+                    >
+                        ⏸️
+                    </button>
+
+                    <button
+                        onclick="cast('stop')"
+                    >
+                        ⏹️
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div class="row">
+
+                <div>
+                    <div class="row-title">
+                        Volume
+                    </div>
+
+                    <div class="row-subtitle">
+                        Contrôle du volume Chromecast
+                    </div>
+                </div>
+
+                <div>
+
+                    <button
+                        onclick="cast('volume_down')"
+                    >
+                        🔉
+                    </button>
+
+                    <button
+                        onclick="cast('mute')"
+                    >
+                        🔇
+                    </button>
+
+                    <button
+                        onclick="cast('volume_up')"
+                    >
+                        🔊
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         🏠 SYSTÈME
+         ===================================================== -->
 
     <section class="card card-wide">
 
@@ -610,6 +767,7 @@ button:disabled {
         <div class="row">
 
             <div>
+
                 <div class="row-title">
                     Palmi Smart Home
                 </div>
@@ -617,6 +775,7 @@ button:disabled {
                 <div class="row-subtitle">
                     État général du système
                 </div>
+
             </div>
 
             <div id="generalStatusText">
@@ -631,772 +790,21 @@ button:disabled {
 
 </div>
 
-<script>
 
-/*
-============================================================
-🌴 PALMI SMART HOME
-JavaScript du dashboard
-============================================================
-*/
-
-let lightOn = false;
-let brightness = 50;
-
-let lumaOn = false;
-let lumaBrightness = 50;
-
-
-/* ============================================================
-   💡 LUMIÈRE — CHAMBRE
-   ============================================================ */
-
-async function loadLightStatus() {
-
-    try {
-
-        const response =
-            await fetch("/light/status");
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            data.success === false
-        ) {
-            return;
-        }
-
-        lightOn =
-            Boolean(data.on);
-
-        if (
-            typeof data.brightness === "number"
-        ) {
-            brightness =
-                data.brightness;
-        }
-
-        updateLight();
-
-        const brightnessElement =
-            document.getElementById(
-                "brightness"
-            );
-
-        if (brightnessElement) {
-
-            brightnessElement.textContent =
-                brightness + " %";
-
-        }
-
-    } catch (error) {
-
-        console.log(
-            "Erreur lumière :",
-            error
-        );
-
-    }
-
-}
-
-
-async function toggleLight() {
-
-    const endpoint =
-        lightOn
-            ? "/light/off"
-            : "/light/on";
-
-    try {
-
-        const response =
-            await fetch(endpoint);
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            data.success === false
-        ) {
-
-            alert(
-                "Impossible de contrôler la lumière."
-            );
-
-            return;
-        }
-
-        lightOn =
-            !lightOn;
-
-        updateLight();
-
-    } catch (error) {
-
-        alert(
-            "Erreur de connexion au serveur."
-        );
-
-    }
-
-}
-
-
-function updateLight() {
-
-    const button =
-        document.getElementById(
-            "lightButton"
-        );
-
-    const state =
-        document.getElementById(
-            "lightState"
-        );
-
-    if (!button || !state) {
-        return;
-    }
-
-    button.classList.toggle(
-        "button-active",
-        lightOn
-    );
-
-    state.textContent =
-        lightOn
-            ? "Allumée"
-            : "Éteinte";
-
-}
-
-
-async function changeBrightness(amount) {
-
-    const newBrightness =
-        Math.max(
-            0,
-            Math.min(
-                100,
-                brightness + amount
-            )
-        );
-
-    try {
-
-        const response =
-            await fetch(
-                `/light/brightness?value=${newBrightness}`
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            data.success === false
-        ) {
-            return;
-        }
-
-        brightness =
-            newBrightness;
-
-        const element =
-            document.getElementById(
-                "brightness"
-            );
-
-        if (element) {
-
-            element.textContent =
-                brightness + " %";
-
-        }
-
-    } catch (error) {
-
-        console.log(
-            "Erreur luminosité :",
-            error
-        );
-
-    }
-
-}
-
-
-/* ============================================================
-   💡 LUMA — SALON
-   ============================================================ */
-
-async function loadLumaStatus() {
-
-    try {
-
-        const response =
-            await fetch("/luma/status");
-
-        const data =
-            await response.json();
-
-        if (!response.ok) {
-            throw new Error(
-                data.error ||
-                "Erreur Luma"
-            );
-        }
-
-        if (Array.isArray(data.result)) {
-
-            const dps = {};
-
-            for (const item of data.result) {
-                dps[item.code] = item.value;
-            }
-
-            if (
-                typeof dps.switch_led === "boolean"
-            ) {
-                lumaOn =
-                    dps.switch_led;
-            }
-
-            if (
-                typeof dps.bright_value === "number"
-            ) {
-                lumaBrightness =
-                    Math.round(
-                        (dps.bright_value / 1000) * 100
-                    );
-            }
-
-        }
-
-        updateLuma();
-
-    } catch (error) {
-
-        console.error(
-            "Erreur état Luma :",
-            error
-        );
-
-        const state =
-            document.getElementById(
-                "lumaState"
-            );
-
-        if (state) {
-            state.textContent =
-                "Indisponible";
-        }
-
-    }
-
-}
-
-
-async function toggleLuma() {
-
-    const endpoint =
-        lumaOn
-            ? "/luma/off"
-            : "/luma/on";
-
-    try {
-
-        const response =
-            await fetch(endpoint);
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            data.success === false
-        ) {
-
-            alert(
-                "Impossible de contrôler Luma."
-            );
-
-            return;
-        }
-
-        lumaOn =
-            !lumaOn;
-
-        updateLuma();
-
-    } catch (error) {
-
-        console.error(
-            "Erreur Luma :",
-            error
-        );
-
-        alert(
-            "Erreur de connexion au serveur."
-        );
-
-    }
-
-}
-
-
-function updateLuma() {
-
-    const button =
-        document.getElementById(
-            "lumaButton"
-        );
-
-    const state =
-        document.getElementById(
-            "lumaState"
-        );
-
-    const brightness =
-        document.getElementById(
-            "lumaBrightness"
-        );
-
-    if (button) {
-
-        button.classList.toggle(
-            "button-active",
-            lumaOn
-        );
-
-    }
-
-    if (state) {
-
-        state.textContent =
-            lumaOn
-                ? "Allumée"
-                : "Éteinte";
-
-    }
-
-    if (brightness) {
-
-        brightness.textContent =
-            lumaBrightness + " %";
-
-    }
-
-}
-
-
-async function changeLumaBrightness(amount) {
-
-    const newBrightness =
-        Math.max(
-            0,
-            Math.min(
-                100,
-                lumaBrightness + amount
-            )
-        );
-
-    try {
-
-        const response =
-            await fetch(
-                `/luma/brightness?value=${newBrightness}`
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            data.success === false
-        ) {
-
-            alert(
-                "Impossible de modifier la luminosité de Luma."
-            );
-
-            return;
-        }
-
-        lumaBrightness =
-            newBrightness;
-
-        updateLuma();
-
-    } catch (error) {
-
-        console.error(
-            "Erreur luminosité Luma :",
-            error
-        );
-
-    }
-
-}
-/* ============================================================
-   📺 TV
-   Dashboard → Railway → Worker → A10 → TV
-   ============================================================ */
-
-async function tv(number, action) {
-
-    if (number !== 1) {
-        return;
-    }
-
-    try {
-
-        const response =
-            await fetch(
-                `/tv/${number}/${action}`,
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            count: 1
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            data.success === false
-        ) {
-
-            console.error(
-                "Commande TV refusée :",
-                data
-            );
-
-            return;
-        }
-
-        console.log(
-            "📺 TV 1 commande envoyée :",
-            action
-        );
-
-    } catch (error) {
-
-        console.error(
-            "Erreur commande TV :",
-            error
-        );
-
-    }
-
-}
-
-
-/* ============================================================
-   🌦️ MÉTÉO
-   ============================================================ */
-
-async function loadWeather() {
-
-    const description =
-        document.getElementById(
-            "weatherDescription"
-        );
-
-    if (!description) {
-        return;
-    }
-
-    description.textContent =
-        "Chargement...";
-
-    try {
-
-        const response =
-            await fetch("/weather");
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            !data.success
-        ) {
-
-            throw new Error(
-                data.error ||
-                "Erreur météo"
-            );
-
-        }
-
-        const temp =
-            document.getElementById(
-                "weatherTemp"
-            );
-
-        const feels =
-            document.getElementById(
-                "weatherFeels"
-            );
-
-        const humidity =
-            document.getElementById(
-                "weatherHumidity"
-            );
-
-        const wind =
-            document.getElementById(
-                "weatherWind"
-            );
-
-        const icon =
-            document.getElementById(
-                "weatherIcon"
-            );
-
-        if (temp) {
-            temp.textContent =
-                data.temperature;
-        }
-
-        if (feels) {
-            feels.textContent =
-                data.feelsLike;
-        }
-
-        if (humidity) {
-            humidity.textContent =
-                data.humidity;
-        }
-
-        if (wind) {
-            wind.textContent =
-                data.wind;
-        }
-
-        description.textContent =
-            data.description;
-
-        if (
-            icon &&
-            data.icon
-        ) {
-
-            icon.src =
-                `https://openweathermap.org/img/wn/${data.icon}@2x.png`;
-
-        }
-
-    } catch (error) {
-
-        console.error(
-            "Erreur météo :",
-            error
-        );
-
-        description.textContent =
-            "Météo indisponible";
-
-    }
-
-}
-
-
-/* ============================================================
-   🏠 ÉTAT DU SYSTÈME
-   ============================================================ */
-
-async function checkSystemStatus() {
-
-    const dot =
-        document.getElementById(
-            "headerStatusDot"
-        );
-
-    const headerText =
-        document.getElementById(
-            "headerStatusText"
-        );
-
-    const generalText =
-        document.getElementById(
-            "generalStatusText"
-        );
-
-    try {
-
-        const response =
-            await fetch(
-                "/light/status"
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            data.success === false
-        ) {
-
-            throw new Error(
-                "Système indisponible"
-            );
-
-        }
-
-        if (dot) {
-
-            dot.style.background =
-                "#4ade80";
-
-        }
-
-        if (headerText) {
-
-            headerText.textContent =
-                "Système en ligne";
-
-        }
-
-        if (generalText) {
-
-            generalText.textContent =
-                "● En ligne";
-
-            generalText.className =
-                "system-online";
-
-        }
-
-    } catch (error) {
-
-        if (dot) {
-
-            dot.style.background =
-                "#ef4444";
-
-        }
-
-        if (headerText) {
-
-            headerText.textContent =
-                "Système hors ligne";
-
-        }
-
-        if (generalText) {
-
-            generalText.textContent =
-                "● Hors ligne";
-
-            generalText.className =
-                "system-offline";
-
-        }
-
-    }
-
-}
-
-
-/* ============================================================
-   🚀 DÉMARRAGE
-   ============================================================ */
-
-document.addEventListener(
-    "DOMContentLoaded",
-    () => {
-
-        loadWeather();
-
-        loadLightStatus();
-
-        loadLumaStatus();
-
-        checkSystemStatus();
-
-    }
-);
-
-
-/*
-============================================================
-🔄 ACTUALISATION AUTOMATIQUE
-============================================================
-*/
-
-setInterval(
-    loadLightStatus,
-    10000
-);
-
-setInterval(
-    loadLumaStatus,
-    10000
-);
-
-setInterval(
-    checkSystemStatus,
-    30000
-);
-
-setInterval(
-    loadWeather,
-    300000
-);
-
-
-/*
-============================================================
-🛡️ PROTECTION
-============================================================
-
-Si une fonction JavaScript rencontre une erreur,
-le dashboard reste affiché.
-============================================================
-*/
-
-window.addEventListener(
-    "error",
-    event => {
-
-        console.error(
-            "Erreur dashboard :",
-            event.error || event.message
-        );
-
-    }
-);
-
-window.addEventListener(
-    "unhandledrejection",
-    event => {
-
-        console.error(
-            "Erreur Promise dashboard :",
-            event.reason
-        );
-
-    }
-);
-
-</script>
+<!-- ============================================================
+     🌴 JAVASCRIPT
+     
+     Le fichier dashboard.js sera chargé séparément.
+     Il gérera :
+     - LED chambre
+     - Luma salon
+     - TV
+     - Chromecast
+     - météo
+     - état système
+     ============================================================ -->
+
+<script src="dashboard.js"></script>
 
 </body>
 </html>
