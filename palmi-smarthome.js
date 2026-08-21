@@ -1173,23 +1173,22 @@ if (TELEGRAM_TOKEN) {
   // ==========================================================
   // AUTOMATISATION 19:15
   // ==========================================================
+async function runDinnerAutomation() {
+  try {
+    await palmiLuma.turnOnLuma();
 
-  async function runDinnerAutomation() {
-    try {
-      await turnOn();
+    await palmiLuma.setBrightnessLuma(100);
 
-      await setBrightness(100);
-
-      await notifyAll(
-        "🍽️ Il est l'heure du dîner ! Palmi a allumé la lumière à 100 %. 🌴💡"
-      );
-    } catch (err) {
-      console.error(
-        "❌ Erreur automatisation dîner :",
-        err.message
-      );
-    }
+    await notifyAll(
+      "🍽️ Il est l'heure du dîner ! Palmi a allumé Luma à 100 %. 🌴💡"
+    );
+  } catch (err) {
+    console.error(
+      "❌ Erreur automatisation dîner :",
+      err.message
+    );
   }
+}
 
   // ==========================================================
   // AUTOMATISATIONS PERSONNALISEES
