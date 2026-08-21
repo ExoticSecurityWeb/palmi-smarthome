@@ -202,10 +202,6 @@ button:disabled {
     border-color: rgba(215,165,111,.35);
 }
 
-.empty {
-    visibility: hidden;
-}
-
 .remote {
     display: grid;
     grid-template-columns: repeat(3,1fr);
@@ -216,6 +212,10 @@ button:disabled {
 
 .remote button {
     height: 48px;
+}
+
+.empty {
+    visibility: hidden;
 }
 
 .temperature {
@@ -399,7 +399,7 @@ button:disabled {
 
 
     <!-- =====================================================
-         💡 SALON
+         💡 SALON / LUMA
          ===================================================== -->
 
     <section class="card">
@@ -566,7 +566,7 @@ button:disabled {
 
     </section>
     <!-- =====================================================
-         📺 TV
+         📺 TV 1 — GOOGLE TV STICK
          ===================================================== -->
 
     <section class="card card-wide">
@@ -594,7 +594,6 @@ button:disabled {
                 disabled
             ></button>
 
-
             <button
                 onclick="tv(1,'left')"
             >
@@ -612,7 +611,6 @@ button:disabled {
             >
                 ▶
             </button>
-
 
             <button
                 onclick="tv(1,'back')"
@@ -632,7 +630,6 @@ button:disabled {
                 🏠
             </button>
 
-
             <button
                 onclick="tv(1,'volume_down')"
             >
@@ -651,7 +648,6 @@ button:disabled {
                 🔊
             </button>
 
-
             <button
                 onclick="tv(1,'power')"
             >
@@ -665,6 +661,7 @@ button:disabled {
 
     <!-- =====================================================
          📽️ CHROMECAST
+         Même format que la télécommande actuelle
          ===================================================== -->
 
     <section class="card card-wide">
@@ -674,79 +671,65 @@ button:disabled {
             <span class="card-icon">📺</span>
         </div>
 
-        <div class="rows">
+        <div class="remote">
 
-            <div class="row">
+            <button
+                class="empty"
+                disabled
+            ></button>
 
-                <div>
-                    <div class="row-title">
-                        Lecture
-                    </div>
+            <button
+                onclick="cast('play')"
+            >
+                ▶️
+            </button>
 
-                    <div class="row-subtitle">
-                        Contrôle de la lecture sur le Chromecast
-                    </div>
-                </div>
+            <button
+                class="empty"
+                disabled
+            ></button>
 
-                <div>
+            <button
+                onclick="cast('previous')"
+            >
+                ⏮️
+            </button>
 
-                    <button
-                        onclick="cast('play')"
-                    >
-                        ▶️
-                    </button>
+            <button
+                onclick="cast('pause')"
+            >
+                ⏸️
+            </button>
 
-                    <button
-                        onclick="cast('pause')"
-                    >
-                        ⏸️
-                    </button>
+            <button
+                onclick="cast('next')"
+            >
+                ⏭️
+            </button>
 
-                    <button
-                        onclick="cast('stop')"
-                    >
-                        ⏹️
-                    </button>
+            <button
+                onclick="cast('volume_down')"
+            >
+                🔉
+            </button>
 
-                </div>
+            <button
+                onclick="cast('stop')"
+            >
+                ⏹️
+            </button>
 
-            </div>
+            <button
+                onclick="cast('volume_up')"
+            >
+                🔊
+            </button>
 
-            <div class="row">
-
-                <div>
-                    <div class="row-title">
-                        Volume
-                    </div>
-
-                    <div class="row-subtitle">
-                        Contrôle du volume Chromecast
-                    </div>
-                </div>
-
-                <div>
-
-                    <button
-                        onclick="cast('volume_down')"
-                    >
-                        🔉
-                    </button>
-
-                    <button
-                        onclick="cast('mute')"
-                    >
-                        🔇
-                    </button>
-
-                    <button
-                        onclick="cast('volume_up')"
-                    >
-                        🔊
-                    </button>
-
-                </div>
-
-            </div>
+            <button
+                onclick="cast('mute')"
+            >
+                🔇
+            </button>
 
         </div>
 
@@ -767,7 +750,6 @@ button:disabled {
         <div class="row">
 
             <div>
-
                 <div class="row-title">
                     Palmi Smart Home
                 </div>
@@ -775,7 +757,6 @@ button:disabled {
                 <div class="row-subtitle">
                     État général du système
                 </div>
-
             </div>
 
             <div id="generalStatusText">
@@ -790,21 +771,7 @@ button:disabled {
 
 </div>
 
-
-<!-- ============================================================
-     🌴 JAVASCRIPT
-     
-     Le fichier dashboard.js sera chargé séparément.
-     Il gérera :
-     - LED chambre
-     - Luma salon
-     - TV
-     - Chromecast
-     - météo
-     - état système
-     ============================================================ -->
-
-<script src="dashboard.js"></script>
+<script src="dashboard-client.js"></script>
 
 </body>
 </html>
