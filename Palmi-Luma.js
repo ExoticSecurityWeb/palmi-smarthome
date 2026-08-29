@@ -16,10 +16,11 @@ const API_BASE =
   process.env.TUYA_API_BASE ||
   "https://openapi.tuyaeu.com";
 
-const LUMA_DEVICE_ID = process.env.TUYA_LUMA_DEVICE_ID;
+const LUMA_DEVICE_ID =
+  process.env.TUYA_LUMA_DEVICE_ID;
 
 // ============================================================
-// SIGNATURE TUYA (identique à palmi-smarthome.js)
+// SIGNATURE TUYA
 // ============================================================
 
 function sha256(str) {
@@ -37,10 +38,21 @@ function hmacSha256(str, secret) {
     .toUpperCase();
 }
 
-function buildStringToSign(method, body, headersStr, url) {
-  const contentSha256 = sha256(body || "");
+function buildStringToSign(
+  method,
+  body,
+  headersStr,
+  url
+) {
+  const contentSha256 =
+    sha256(body || "");
+
   return `${method}\n${contentSha256}\n${headersStr}\n${url}`;
 }
+
+// ============================================================
+// TOKEN TUYA
+// ============================================================
 
 async function getToken() {
   if (!ACCESS_ID || !ACCESS_SECRET) {
@@ -49,23 +61,38 @@ async function getToken() {
     );
   }
 
-  const t = Date.now().toString();
-  const url = "/v1.0/token?grant_type=1";
-  const stringToSign = buildStringToSign("GET", "", "", url);
+  const t =
+    Date.now().toString();
 
-  const sign = hmacSha256(
-    `${ACCESS_ID}${t}${stringToSign}`,
-    ACCESS_SECRET
-  );
+  const url =
+    "/v1.0/token?grant_type=1";
 
-  const res = await axios.get(`${API_BASE}${url}`, {
-    headers: {
-      client_id: ACCESS_ID,
-      sign,
-      t,
-      sign_method: "HMAC-SHA256"
-    }
-  });
+  const stringToSign =
+    buildStringToSign(
+      "GET",
+      "",
+      "",
+      url
+    );
+
+  const sign =
+    hmacSha256(
+      `${ACCESS_ID}${t}${stringToSign}`,
+      ACCESS_SECRET
+    );
+
+  const res =
+    await axios.get(
+      `${API_BASE}${url}`,
+      {
+        headers: {
+          client_id: ACCESS_ID,
+          sign,
+          t,
+          sign_method: "HMAC-SHA256"
+        }
+      }
+    );
 
   if (!res.data.success) {
     throw new Error(
@@ -76,32 +103,63 @@ async function getToken() {
   return res.data.result.access_token;
 }
 
-async function signedRequest(method, url, token, body) {
-  const t = Date.now().toString();
-  const bodyStr = body ? JSON.stringify(body) : "";
-  const stringToSign = buildStringToSign(method, bodyStr, "", url);
+// ============================================================
+// REQUÊTES SIGNÉES
+// ============================================================
 
-  const sign = hmacSha256(
-    `${ACCESS_ID}${token}${t}${stringToSign}`,
-    ACCESS_SECRET
-  );
+async function signedRequest(
+  method,
+  url,
+  token,
+  body
+) {
+  const t =
+    Date.now().toString();
 
-  const res = await axios({
-    method,
-    url: `${API_BASE}${url}`,
-    headers: {
-      client_id: ACCESS_ID,
-      access_token: token,
-      sign,
-      t,
-      sign_method: "HMAC-SHA256",
-      "Content-Type": "application/json"
-    },
-    data: body || undefined
-  });
+  const bodyStr =
+    body
+      ? JSON.stringify(body)
+      : "";
+
+  const stringToSign =
+    buildStringToSign(
+      method,
+      bodyStr,
+      "",
+      url
+    );
+
+  const sign =
+    hmacSha256(
+      `${ACCESS_ID}${token}${t}${stringToSign}`,
+      ACCESS_SECRET
+    );
+
+  const res =
+    await axios({
+      method,
+      url: `${API_BASE}${url}`,
+
+      headers: {
+        client_id: ACCESS_ID,
+        access_token: token,
+        sign,
+        t,
+        sign_method: "HMAC-SHA256",
+        "Content-Type":
+          "application/json"
+      },
+
+      data:
+        body || undefined
+    });
 
   return res.data;
 }
+
+// ============================================================
+// DEVICE ID
+// ============================================================
 
 function requireLumaDeviceId() {
   if (!LUMA_DEVICE_ID) {
@@ -112,37 +170,75 @@ function requireLumaDeviceId() {
 }
 
 // ============================================================
-// HEX -> HSV (identique à palmi-smarthome.js)
+// HEX -> HSV
+//
+// Tuya colour_data_v2 :
+// H = 0 → 360
+// S = 0 → 1000
+// V = 0 → 1000
 // ============================================================
 
 function hexToHsv(hex) {
-  const r = parseInt(hex.substring(0, 2), 16) / 255;
-  const g = parseInt(hex.substring(2, 4), 16) / 255;
-  const b = parseInt(hex.substring(4, 6), 16) / 255;
+  const r =
+    parseInt(
+      hex.substring(0, 2),
+      16
+    ) / 255;
 
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const delta = max - min;
+  const g =
+    parseInt(
+      hex.substring(2, 4),
+      16
+    ) / 255;
+
+  const b =
+    parseInt(
+      hex.substring(4, 6),
+      16
+    ) / 255;
+
+  const max =
+    Math.max(r, g, b);
+
+  const min =
+    Math.min(r, g, b);
+
+  const delta =
+    max - min;
 
   let h = 0;
 
   if (delta !== 0) {
     if (max === r) {
-      h = ((g - b) / delta) % 6;
+      h =
+        ((g - b) / delta) % 6;
     } else if (max === g) {
-      h = (b - r) / delta + 2;
+      h =
+        (b - r) / delta + 2;
     } else {
-      h = (r - g) / delta + 4;
+      h =
+        (r - g) / delta + 4;
     }
 
-    h = Math.round(h * 60);
-    if (h < 0) h += 360;
+    h *= 60;
+
+    if (h < 0) {
+      h += 360;
+    }
   }
 
+  const s =
+    max === 0
+      ? 0
+      : (delta / max) * 1000;
+
+  const v =
+    max * 1000;
+
   return {
-    h,
-    s: max === 0 ? 0 : Math.round((delta / max) * 1000),
-    v: Math.round(max * 1000)
+    h: Math.round(h),
+    s: Math.round(s),
+    v: Math.round(v)
   };
 }
 
@@ -150,169 +246,526 @@ function hexToHsv(hex) {
 // FONCTIONS TUYA GÉNÉRIQUES
 // ============================================================
 
-async function sendCommands(commands) {
+async function sendCommands(
+  commands
+) {
   requireLumaDeviceId();
 
-  const token = await getToken();
-  const url = `/v1.0/devices/${LUMA_DEVICE_ID}/commands`;
+  const token =
+    await getToken();
 
-  return signedRequest("POST", url, token, { commands });
+  const url =
+    `/v1.0/devices/${LUMA_DEVICE_ID}/commands`;
+
+  return signedRequest(
+    "POST",
+    url,
+    token,
+    { commands }
+  );
 }
+
+// ============================================================
+// STATUS
+// ============================================================
 
 async function getLumaStatus() {
   requireLumaDeviceId();
 
-  const token = await getToken();
-  const url = `/v1.0/devices/${LUMA_DEVICE_ID}/status`;
+  const token =
+    await getToken();
 
-  return signedRequest("GET", url, token);
+  const url =
+    `/v1.0/devices/${LUMA_DEVICE_ID}/status`;
+
+  return signedRequest(
+    "GET",
+    url,
+    token
+  );
 }
 
-// Permet de vérifier les DPS réellement supportés par Luma
-// avant de s'appuyer dessus (ne jamais supposer les codes).
+// ============================================================
+// FUNCTIONS
+// ============================================================
+
 async function getLumaFunctions() {
   requireLumaDeviceId();
 
-  const token = await getToken();
-  const url = `/v1.0/devices/${LUMA_DEVICE_ID}/functions`;
+  const token =
+    await getToken();
 
-  return signedRequest("GET", url, token);
+  const url =
+    `/v1.0/devices/${LUMA_DEVICE_ID}/functions`;
+
+  return signedRequest(
+    "GET",
+    url,
+    token
+  );
 }
 
 // ============================================================
-// COMMANDES LUMA
-// Codes DPS alignés sur ceux de la LED existante (catégorie
-// Tuya "dj" — ampoule/strip standard). À confirmer via
-// GET /luma/debug-functions avant mise en prod : si un code
-// diffère, adapter uniquement les valeurs ci-dessous.
+// ON
 // ============================================================
 
 async function turnOnLuma() {
-  return sendCommands([{ code: "switch_led", value: true }]);
+  return sendCommands([
+    {
+      code: "switch_led",
+      value: true
+    }
+  ]);
 }
+
+// ============================================================
+// OFF
+// ============================================================
 
 async function turnOffLuma() {
-  return sendCommands([{ code: "switch_led", value: false }]);
-}
-
-async function setBrightnessLuma(percent) {
   return sendCommands([
     {
-      code: "bright_value",
-      value: Math.round((percent / 100) * 1000)
+      code: "switch_led",
+      value: false
     }
   ]);
 }
 
-async function setWhiteLuma(warmth, brightness) {
+// ============================================================
+// LUMINOSITÉ
+//
+// bright_value_v2
+// min = 10
+// max = 1000
+// ============================================================
+
+async function setBrightnessLuma(
+  percent
+) {
+  const brightness =
+    Math.max(
+      10,
+      Math.min(
+        1000,
+        Math.round(
+          (Number(percent) / 100) *
+            1000
+        )
+      )
+    );
+
   return sendCommands([
-    { code: "work_mode", value: "white" },
     {
-      code: "temp_value",
-      value: Math.round((warmth / 100) * 1000)
+      code: "bright_value_v2",
+      value: brightness
+    }
+  ]);
+}
+
+// ============================================================
+// BLANC
+//
+// temp_value_v2
+// 0    = blanc très chaud
+// 1000 = blanc très froid
+//
+// warmth = 100 -> maximum chaud
+// warmth = 0   -> maximum froid
+//
+// Par défaut : 100 = BLANC CHAUD
+// ============================================================
+
+async function setWhiteLuma(
+  warmth = 100,
+  brightness = 100
+) {
+  const warmthValue =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        Number(warmth)
+      )
+    );
+
+  const brightnessValue =
+    Math.max(
+      10,
+      Math.min(
+        100,
+        Number(brightness)
+      )
+    );
+
+  // Inversion :
+  // 100% chaud -> 0
+  // 0% chaud   -> 1000
+  const temperature =
+    Math.round(
+      ((100 - warmthValue) / 100) *
+        1000
+    );
+
+  const bright =
+    Math.round(
+      (brightnessValue / 100) *
+        1000
+    );
+
+  return sendCommands([
+    {
+      code: "work_mode",
+      value: "white"
     },
     {
-      code: "bright_value",
-      value: Math.round((brightness / 100) * 1000)
+      code: "temp_value_v2",
+      value: temperature
+    },
+    {
+      code: "bright_value_v2",
+      value: bright
     }
   ]);
 }
 
-async function setColorLuma(hex) {
+// ============================================================
+// BLANC CHAUD DIRECT
+//
+// Utilisé comme commande simple.
+// ============================================================
+
+async function setWarmWhiteLuma(
+  brightness = 100
+) {
+  return setWhiteLuma(
+    100,
+    brightness
+  );
+}
+
+// ============================================================
+// COULEUR
+//
+// colour_data_v2
+//
+// h = 0 → 360
+// s = 0 → 1000
+// v = 0 → 1000
+// ============================================================
+
+async function setColorLuma(
+  hex
+) {
+  hex = String(hex || "")
+    .replace("#", "")
+    .trim();
+
+  if (
+    !/^[0-9a-fA-F]{6}$/.test(hex)
+  ) {
+    throw new Error(
+      "Couleur invalide. Format attendu : RRGGBB."
+    );
+  }
+
+  const hsv =
+    hexToHsv(hex);
+
   return sendCommands([
-    { code: "work_mode", value: "colour" },
-    { code: "colour_data", value: hexToHsv(hex) }
+    {
+      code: "work_mode",
+      value: "colour"
+    },
+    {
+      code: "colour_data_v2",
+      value: {
+        h: hsv.h,
+        s: hsv.s,
+        v: hsv.v
+      }
+    }
   ]);
 }
 
 // ============================================================
-// ROUTES HTTP OPTIONNELLES (montées via app.use("/luma", ...))
+// ROUTER EXPRESS
 // ============================================================
 
-const router = express.Router();
+const router =
+  express.Router();
 
-router.get("/debug-functions", async (req, res) => {
-  try {
-    res.json(await getLumaFunctions());
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// ============================================================
+// DEBUG FUNCTIONS
+// ============================================================
 
-router.get("/status", async (req, res) => {
-  try {
-    res.json(await getLumaStatus());
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.get("/on", async (req, res) => {
-  try {
-    res.json(await turnOnLuma());
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.get("/off", async (req, res) => {
-  try {
-    res.json(await turnOffLuma());
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.get("/brightness", async (req, res) => {
-  try {
-    const percent = parseInt(req.query.value, 10);
-
-    if (Number.isNaN(percent) || percent < 0 || percent > 100) {
-      return res.status(400).json({
-        error: "Paramètre 'value' requis, entre 0 et 100."
+router.get(
+  "/debug-functions",
+  async (req, res) => {
+    try {
+      res.json(
+        await getLumaFunctions()
+      );
+    } catch (err) {
+      res.status(500).json({
+        error: err.message
       });
     }
-
-    res.json(await setBrightnessLuma(percent));
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
-});
+);
 
-router.get("/white", async (req, res) => {
-  try {
-    const warmth = parseInt(req.query.warmth ?? "50", 10);
-    const brightness = parseInt(req.query.brightness ?? "100", 10);
+// ============================================================
+// STATUS
+// ============================================================
 
-    res.json(await setWhiteLuma(warmth, brightness));
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.get("/color", async (req, res) => {
-  try {
-    const hex = (req.query.hex || "").replace("#", "");
-
-    if (!/^[0-9a-fA-F]{6}$/.test(hex)) {
-      return res.status(400).json({
-        error: "Paramètre 'hex' requis, format RRGGBB, ex: ff0000."
+router.get(
+  "/status",
+  async (req, res) => {
+    try {
+      res.json(
+        await getLumaStatus()
+      );
+    } catch (err) {
+      res.status(500).json({
+        error: err.message
       });
     }
-
-    res.json(await setColorLuma(hex));
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
-});
+);
+
+// ============================================================
+// ON
+// ============================================================
+
+router.get(
+  "/on",
+  async (req, res) => {
+    try {
+      res.json(
+        await turnOnLuma()
+      );
+    } catch (err) {
+      res.status(500).json({
+        error: err.message
+      });
+    }
+  }
+);
+
+// ============================================================
+// OFF
+// ============================================================
+
+router.get(
+  "/off",
+  async (req, res) => {
+    try {
+      res.json(
+        await turnOffLuma()
+      );
+    } catch (err) {
+      res.status(500).json({
+        error: err.message
+      });
+    }
+  }
+);
+
+// ============================================================
+// BRIGHTNESS
+// ============================================================
+
+router.get(
+  "/brightness",
+  async (req, res) => {
+    try {
+      const percent =
+        parseInt(
+          req.query.value,
+          10
+        );
+
+      if (
+        Number.isNaN(percent) ||
+        percent < 0 ||
+        percent > 100
+      ) {
+        return res.status(400).json({
+          error:
+            "Paramètre 'value' requis, entre 0 et 100."
+        });
+      }
+
+      res.json(
+        await setBrightnessLuma(
+          percent
+        )
+      );
+    } catch (err) {
+      res.status(500).json({
+        error: err.message
+      });
+    }
+  }
+);
+
+// ============================================================
+// WHITE
+//
+// Sans paramètre : BLANC CHAUD MAXIMUM
+//
+// /luma/white
+// /luma/white?warmth=100
+// /luma/white?warmth=50
+// /luma/white?warmth=0
+// ============================================================
+
+router.get(
+  "/white",
+  async (req, res) => {
+    try {
+      const warmth =
+        req.query.warmth === undefined
+          ? 100
+          : parseInt(
+              req.query.warmth,
+              10
+            );
+
+      const brightness =
+        req.query.brightness === undefined
+          ? 100
+          : parseInt(
+              req.query.brightness,
+              10
+            );
+
+      if (
+        Number.isNaN(warmth) ||
+        warmth < 0 ||
+        warmth > 100
+      ) {
+        return res.status(400).json({
+          error:
+            "warmth doit être compris entre 0 et 100."
+        });
+      }
+
+      if (
+        Number.isNaN(brightness) ||
+        brightness < 0 ||
+        brightness > 100
+      ) {
+        return res.status(400).json({
+          error:
+            "brightness doit être compris entre 0 et 100."
+        });
+      }
+
+      res.json(
+        await setWhiteLuma(
+          warmth,
+          brightness
+        )
+      );
+    } catch (err) {
+      res.status(500).json({
+        error: err.message
+      });
+    }
+  }
+);
+
+// ============================================================
+// BLANC CHAUD
+//
+// /luma/warm-white
+// /luma/warm-white?brightness=80
+// ============================================================
+
+router.get(
+  "/warm-white",
+  async (req, res) => {
+    try {
+      const brightness =
+        req.query.brightness === undefined
+          ? 100
+          : parseInt(
+              req.query.brightness,
+              10
+            );
+
+      if (
+        Number.isNaN(brightness) ||
+        brightness < 0 ||
+        brightness > 100
+      ) {
+        return res.status(400).json({
+          error:
+            "brightness doit être compris entre 0 et 100."
+        });
+      }
+
+      res.json(
+        await setWarmWhiteLuma(
+          brightness
+        )
+      );
+    } catch (err) {
+      res.status(500).json({
+        error: err.message
+      });
+    }
+  }
+);
+
+// ============================================================
+// COLOR
+// ============================================================
+
+router.get(
+  "/color",
+  async (req, res) => {
+    try {
+      const hex =
+        String(
+          req.query.hex || ""
+        ).replace("#", "");
+
+      if (
+        !/^[0-9a-fA-F]{6}$/.test(hex)
+      ) {
+        return res.status(400).json({
+          error:
+            "Paramètre 'hex' requis, format RRGGBB. Exemple : ff0000."
+        });
+      }
+
+      res.json(
+        await setColorLuma(hex)
+      );
+    } catch (err) {
+      res.status(500).json({
+        error: err.message
+      });
+    }
+  }
+);
+
+// ============================================================
+// EXPORTS
+// ============================================================
 
 module.exports = {
   router,
+
   turnOnLuma,
   turnOffLuma,
+
   setBrightnessLuma,
   setWhiteLuma,
+  setWarmWhiteLuma,
   setColorLuma,
+
   getLumaStatus,
   getLumaFunctions
 };
