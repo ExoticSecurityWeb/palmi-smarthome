@@ -3,11 +3,20 @@
 // Communication exclusive via Tuya Cloud (aucun contrôle local).
 // Réutilise TUYA_ACCESS_ID / TUYA_ACCESS_SECRET déjà configurés
 // pour la LED existante. Device ID dédié via TUYA_LUMA_DEVICE_ID.
+//
+// PRINTER :
+// printer.js est un module externe.
+// Luma l'appelle directement via handlePrinterVoiceCommand().
+// printer.js parle lui-même au bridge local (sur le PC) pour
+// l'impression réelle et les niveaux d'encre réels.
+// Aucune route /luma/printer/... n'est créée.
 // ============================================================
 
 const crypto = require("crypto");
 const axios = require("axios");
 const express = require("express");
+
+const printer = require("./printer");
 
 const ACCESS_ID = process.env.TUYA_ACCESS_ID;
 const ACCESS_SECRET = process.env.TUYA_ACCESS_SECRET;
@@ -397,9 +406,6 @@ async function setWhiteLuma(
       )
     );
 
-  // Inversion :
-  // 100% chaud -> 0
-  // 0% chaud   -> 1000
   const temperature =
     Math.round(
       ((100 - warmthValue) / 100) *
@@ -430,8 +436,6 @@ async function setWhiteLuma(
 
 // ============================================================
 // BLANC CHAUD DIRECT
-//
-// Utilisé comme commande simple.
 // ============================================================
 
 async function setWarmWhiteLuma(
@@ -445,12 +449,6 @@ async function setWarmWhiteLuma(
 
 // ============================================================
 // COULEUR
-//
-// colour_data_v2
-//
-// h = 0 → 360
-// s = 0 → 1000
-// v = 0 → 1000
 // ============================================================
 
 async function setColorLuma(
@@ -485,6 +483,26 @@ async function setColorLuma(
       }
     }
   ]);
+}
+
+// ============================================================
+// IMPRIMANTE
+//
+// Point d'entrée UNIQUE pour la reconnaissance vocale imprimante.
+// Reçoit le texte brut du message et, si un document a été
+// fourni (ex: pièce jointe Telegram), son contenu en base64.
+//
+// Retourne :
+//   - un message prêt à envoyer (string) si la phrase concerne
+//     l'imprimante
+//   - null si la phrase ne concerne pas l'imprimante
+//
+// Toute la logique réelle (bridge, impression, encre) vit dans
+// printer.js. Ici, on ne fait que relayer.
+// ============================================================
+
+async function handlePrinterVoiceCommand(text, context) {
+  return printer.matchPrinterVoiceCommand(text, context);
 }
 
 // ============================================================
@@ -610,8 +628,6 @@ router.get(
 
 // ============================================================
 // WHITE
-//
-// Sans paramètre : BLANC CHAUD MAXIMUM
 //
 // /luma/white
 // /luma/white?warmth=100
@@ -767,5 +783,8 @@ module.exports = {
   setColorLuma,
 
   getLumaStatus,
-  getLumaFunctions
+  getLumaFunctions,
+
+  // Module imprimante externe
+  handlePrinterVoiceCommand
 };

@@ -12,6 +12,14 @@
 // (PALMI_SMARTHOME_URL est fixée automatiquement ci-dessous, pas besoin
 // de la définir dans le panel).
 
+const path = require("path");
+
+// Charge les secrets depuis un .env LOCAL AU SERVEUR uniquement.
+// Ce fichier .env n'est jamais commité (voir .gitignore) : Zenode n'a pas
+// de section "Variables" dans son panel, donc les secrets sont déposés
+// à la main en SFTP directement sur le serveur, à côté de start.js.
+require("dotenv").config({ path: path.join(__dirname, ".env") });
+
 const { spawn } = require("child_process");
 const http = require("http");
 const httpProxy = require("http-proxy");
@@ -28,9 +36,50 @@ const EXPOSED_PORT =
   process.env.PORT ||
   25565;
 
+// Variables PUBLIQUES / non secrètes : ce sont déjà les valeurs par défaut
+// codées dans le projet (aucun secret ici, donc pas besoin de les mettre
+// dans le .env — mais elles restent surchargeables via .env si besoin).
+const PUBLIC_DEFAULTS = {
+  TUYA_API_BASE: process.env.TUYA_API_BASE || "https://openapi.tuyaeu.com",
+  PALMI_TV_WORKER_URL:
+    process.env.PALMI_TV_WORKER_URL || "https://palmi-tv.vosprojets.workers.dev"
+};
+
+// Secrets attendus dans le .env local (jamais dans GitHub/le code) :
+//   TUYA_ACCESS_ID, TUYA_ACCESS_SECRET, TUYA_DEVICE_ID, TUYA_LUMA_DEVICE_ID,
+//   TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_CHAT_IDS,
+//   PALMI_TV_BRIDGE_TOKEN, PALMI_CAST_BRIDGE_TOKEN,
+//   OPENWEATHER_API_KEY, PALMI_TV_TOKEN
+const REQUIRED_SECRETS = [
+  "TUYA_ACCESS_ID",
+  "TUYA_ACCESS_SECRET",
+  "TUYA_DEVICE_ID",
+  "TUYA_LUMA_DEVICE_ID",
+  "TELEGRAM_BOT_TOKEN",
+  "PALMI_TV_BRIDGE_TOKEN",
+  "PALMI_CAST_BRIDGE_TOKEN",
+  "OPENWEATHER_API_KEY",
+  "PALMI_TV_TOKEN"
+];
+
+const missing = REQUIRED_SECRETS.filter((key) => !process.env[key]);
+if (missing.length > 0) {
+  console.error(
+    `[start.js] ⚠️  Secrets manquants dans .env : ${missing.join(", ")}`
+  );
+  console.error(
+    "[start.js] Vérifie que le fichier .env est bien présent à côté de start.js sur le serveur."
+  );
+}
+
+// Base d'environnement commune transmise aux deux process enfants :
+// process.env (dont tout ce qui vient d'être chargé depuis .env) + les
+// valeurs publiques par défaut.
+const BASE_ENV = { ...process.env, ...PUBLIC_DEFAULTS };
+
 function startChild(name, script, env) {
   const child = spawn("node", [script], {
-    env: { ...process.env, ...env },
+    env: { ...BASE_ENV, ...env },
     stdio: "inherit"
   });
   child.on("exit", (code) => {

@@ -1,0 +1,8 @@
+{
+  "night": true,
+  "custom": [],
+  "school": {
+    "enabled": true,
+    "disabledUntil": "2026-09-07"
+  }
+}

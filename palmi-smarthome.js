@@ -49,7 +49,11 @@ const AUTOMATIONS_FILE = path.join(
 
 const automations = {
   night: true,
-  custom: []
+  custom: [],
+  school: {
+    enabled: true,
+    disabledUntil: null
+  }
 };
 
 const automationCreation = {};
@@ -73,6 +77,28 @@ function loadAutomations() {
 
     if (Array.isArray(data.custom)) {
       automations.custom = data.custom;
+    }
+
+    if (
+      data.school &&
+      typeof data.school === "object"
+    ) {
+      if (
+        typeof data.school.enabled ===
+        "boolean"
+      ) {
+        automations.school.enabled =
+          data.school.enabled;
+      }
+
+      if (
+        typeof data.school
+          .disabledUntil === "string" ||
+        data.school.disabledUntil === null
+      ) {
+        automations.school.disabledUntil =
+          data.school.disabledUntil;
+      }
     }
   } catch (err) {
     console.error(
@@ -142,6 +168,72 @@ function getParisTime() {
 function getParisDate() {
   const p = getParisParts();
   return `${p.year}-${p.month}-${p.day}`;
+}
+
+function getParisWeekday() {
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      timeZone: "Europe/Paris",
+      weekday: "short"
+    }
+  ).format(new Date());
+}
+
+function addDaysToDateStr(
+  dateStr,
+  days
+) {
+  const [y, m, d] =
+    dateStr
+      .split("-")
+      .map(Number);
+
+  const date = new Date(
+    Date.UTC(y, m - 1, d)
+  );
+
+  date.setUTCDate(
+    date.getUTCDate() + days
+  );
+
+  const yyyy =
+    date.getUTCFullYear();
+
+  const mm = String(
+    date.getUTCMonth() + 1
+  ).padStart(2, "0");
+
+  const dd = String(
+    date.getUTCDate()
+  ).padStart(2, "0");
+
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function isSchoolAutomationActive() {
+  if (!automations.school.enabled) {
+    return false;
+  }
+
+  if (automations.school.disabledUntil) {
+    const today = getParisDate();
+
+    if (
+      today <=
+      automations.school.disabledUntil
+    ) {
+      return false;
+    }
+
+    // Période de désactivation terminée, on réactive
+    automations.school.disabledUntil =
+      null;
+
+    saveAutomations();
+  }
+
+  return true;
 }
 
 // ============================================================
@@ -1191,6 +1283,47 @@ async function runDinnerAutomation() {
 }
 
   // ==========================================================
+  // AUTOMATISATION 07:00 — ECOLE (LUMA / SALON), LUN-VEN
+  // ==========================================================
+
+  async function runSchoolAutomation() {
+    try {
+      await palmiLuma.turnOnLuma();
+
+      await palmiLuma.setBrightnessLuma(100);
+
+      await notifyAll(
+        "🌅 Bonjour ! Il est 7h, c'est l'heure de se lever pour l'école, pour déjeuner et se préparer ☀️"
+      );
+    } catch (err) {
+      console.error(
+        "❌ Erreur automatisation école :",
+        err.message
+      );
+    }
+  }
+
+  // ==========================================================
+  // AUTOMATISATION 00:15 — COUCHER (LUMA)
+  // ==========================================================
+
+  async function runBedtimeLumaAutomation() {
+    try {
+      await palmiLuma.setBrightnessLuma(30);
+
+      await notifyAll(
+        "🌙 Luma est passée à 30 % pour le coucher. 💡\n" +
+          "Dis-moi \"éteins la lumière, on va dormir\" quand tu veux que je l'éteigne complètement."
+      );
+    } catch (err) {
+      console.error(
+        "❌ Erreur automatisation 00:15 (coucher Luma) :",
+        err.message
+      );
+    }
+  }
+
+  // ==========================================================
   // AUTOMATISATIONS PERSONNALISEES
   // ==========================================================
 
@@ -1243,6 +1376,19 @@ async function runDinnerAutomation() {
 
       try {
         if (
+          currentTime === "00:15" &&
+          !fixedRuns.has(
+            `${date}-0015`
+          )
+        ) {
+          fixedRuns.add(
+            `${date}-0015`
+          );
+
+          await runBedtimeLumaAutomation();
+        }
+
+        if (
           currentTime === "00:36" &&
           !fixedRuns.has(
             `${date}-0036`
@@ -1292,6 +1438,28 @@ async function runDinnerAutomation() {
           );
 
           await runDinnerAutomation();
+        }
+
+        if (
+          currentTime === "07:00" &&
+          !fixedRuns.has(
+            `${date}-0700`
+          )
+        ) {
+          fixedRuns.add(
+            `${date}-0700`
+          );
+
+          const weekday =
+            getParisWeekday();
+
+          if (
+            weekday !== "Sat" &&
+            weekday !== "Sun" &&
+            isSchoolAutomationActive()
+          ) {
+            await runSchoolAutomation();
+          }
         }
 
         await runCustomAutomations(
@@ -1357,6 +1525,42 @@ async function runDinnerAutomation() {
       }
 
       rememberChat(chatId);
+
+      // ======================================================
+      // IMPRIMANTE (module externe printer.js via Palmi-Luma.js)
+      // ======================================================
+
+      let printerContext = {};
+
+      if (msg.document) {
+        const fileLink =
+          await bot.getFileLink(msg.document.file_id);
+
+        const fileRes =
+          await axios.get(fileLink, {
+            responseType: "arraybuffer"
+          });
+
+        printerContext.fileBase64 =
+          Buffer.from(fileRes.data).toString("base64");
+
+        printerContext.fileName =
+          msg.document.file_name || "document";
+      }
+
+      const printerText =
+        (msg.caption || text || "").toLowerCase();
+
+      const printerReply =
+        await palmiLuma.handlePrinterVoiceCommand(
+          printerText,
+          printerContext
+        );
+
+      if (printerReply) {
+        await bot.sendMessage(chatId, printerReply);
+        return;
+      }
 
       // ======================================================
       // COMMANDES TV
@@ -1712,6 +1916,47 @@ async function runDinnerAutomation() {
               return;
             }
           }
+        }
+
+        // ======================================================
+        // COUCHER — "éteins la lumière, on va dormir" → Luma
+        // Vérifié avant le bloc générique "lumière" (LED chambre)
+        // pour ne pas lui rentrer dedans : ne se déclenche que si
+        // un mot de coucher est présent (dormir/dodo/coucher).
+        // ======================================================
+
+        const wantsOffPhrase =
+          lowerText.includes("éteins") ||
+          lowerText.includes("eteins") ||
+          lowerText.includes("éteint") ||
+          lowerText.includes("eteint") ||
+          lowerText.includes("éteindre") ||
+          lowerText.includes("eteindre");
+
+        const mentionsLumiere =
+          lowerText.includes("lumière") ||
+          lowerText.includes("lumiere");
+
+        const mentionsCoucher =
+          lowerText.includes("dormir") ||
+          lowerText.includes("dodo") ||
+          lowerText.includes("coucher");
+
+        if (
+          wantsOffPhrase &&
+          mentionsLumiere &&
+          mentionsCoucher
+        ) {
+          delete automationCreation[chatId];
+
+          await palmiLuma.turnOffLuma();
+
+          await bot.sendMessage(
+            chatId,
+            "Je l'éteins avec plaisir. 🌙💡"
+          );
+
+          return;
         }
 
         // ======================================================
@@ -2093,6 +2338,82 @@ async function runDinnerAutomation() {
         }
 
         // ======================================================
+        // /DESACTIVER_ECOLE
+        // ======================================================
+
+        if (
+          lowerText.startsWith(
+            "/desactiver_ecole"
+          )
+        ) {
+          const parts =
+            text.split(/\s+/);
+
+          const days = parseInt(
+            parts[1],
+            10
+          );
+
+          if (
+            Number.isNaN(days) ||
+            days <= 0
+          ) {
+            await bot.sendMessage(
+              chatId,
+              "❌ Indique un nombre de jours.\n" +
+                "Exemple : /desactiver_ecole 14"
+            );
+
+            return;
+          }
+
+          const today =
+            getParisDate();
+
+          automations.school.disabledUntil =
+            addDaysToDateStr(
+              today,
+              days
+            );
+
+          saveAutomations();
+
+          await bot.sendMessage(
+            chatId,
+            "🏫 Automatisation école désactivée !\n\n" +
+              `⏸️ Pendant ${days} jour(s), jusqu'au ${automations.school.disabledUntil} inclus.\n` +
+              "🔁 Réactivation automatique après.\n" +
+              "Utilise /reactiver_ecole pour la réactiver avant."
+          );
+
+          return;
+        }
+
+        // ======================================================
+        // /REACTIVER_ECOLE
+        // ======================================================
+
+        if (
+          lowerText ===
+          "/reactiver_ecole"
+        ) {
+          automations.school.enabled =
+            true;
+
+          automations.school.disabledUntil =
+            null;
+
+          saveAutomations();
+
+          await bot.sendMessage(
+            chatId,
+            "🏫 Automatisation école réactivée ! ✅"
+          );
+
+          return;
+        }
+
+        // ======================================================
         // /ADD
         // ======================================================
 
@@ -2139,13 +2460,28 @@ async function runDinnerAutomation() {
             }\n`;
 
           message +=
+            "⏰ 00:15 : Luma baissée à 30 % (coucher)\n";
+
+          message +=
             "⏰ 00:36 : baisse à 30 %\n";
 
           message +=
             "⏰ 02:00 : extinction\n";
 
           message +=
-            "⏰ 19:15 : lumière à 100 % + notification\n\n";
+            "⏰ 19:15 : lumière à 100 % + notification\n";
+
+          const schoolStatus =
+            !automations.school
+              .enabled
+              ? "❌ Désactivée"
+              : automations.school
+                  .disabledUntil
+              ? `⏸️ En pause jusqu'au ${automations.school.disabledUntil}`
+              : "✅ Activée";
+
+          message +=
+            `🏫 07:00 (lun-ven) école : ${schoolStatus}\n\n`;
 
           if (
             automations.custom.length ===
@@ -2328,7 +2664,11 @@ async function runDinnerAutomation() {
               "• /add — créer une automatisation\n" +
               "• /automations — voir les automatisations\n" +
               "• /remove — supprimer une automatisation\n" +
-              "• /cancel — annuler une création"
+              "• /cancel — annuler une création\n\n" +
+              "🏫 Automatisation école (7h, lun-ven) :\n" +
+              "• /desactiver_ecole <jours> — pause (ex: vacances)\n" +
+              "   Exemple : /desactiver_ecole 14\n" +
+              "• /reactiver_ecole — réactive avant la fin de la pause"
           );
 
           return;
