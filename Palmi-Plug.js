@@ -2,7 +2,7 @@
 // PALMI-PLUG — Prise connectée Tuya "LSC Power Plug FR incl. Power meter"
 // Communication exclusive via Tuya Cloud (aucun contrôle local).
 // Réutilise TUYA_ACCESS_ID / TUYA_ACCESS_SECRET déjà configurés.
-// Device ID : TUYA_PLUG_DEVICE_ID (défaut = la prise achetée chez Action).
+// Device ID : variable TUYA_PLUG_DEVICE_ID (obligatoire, rien en dur).
 //
 // FONCTIONS :
 //  - on / off / status (avec conso : W, V, mA, kWh)
@@ -13,7 +13,7 @@
 //
 // VARIABLES D'ENVIRONNEMENT :
 //  TUYA_ACCESS_ID, TUYA_ACCESS_SECRET, TUYA_API_BASE (déjà là)
-//  TUYA_PLUG_DEVICE_ID   (optionnel, défaut ci-dessous)
+//  TUYA_PLUG_DEVICE_ID   (OBLIGATOIRE : l'ID de la prise dans Tuya IoT)
 //  PLUG_BATTERY_KEY      (OBLIGATOIRE pour /plug/battery : secret
 //                         partagé avec le téléphone)
 // ============================================================
@@ -32,8 +32,7 @@ const API_BASE =
   "https://openapi.tuyaeu.com";
 
 const PLUG_DEVICE_ID =
-  process.env.TUYA_PLUG_DEVICE_ID ||
-  "bf5ee530dab570e7b4urck";
+  process.env.TUYA_PLUG_DEVICE_ID;
 
 const PLUG_BATTERY_KEY =
   process.env.PLUG_BATTERY_KEY;
@@ -255,6 +254,12 @@ async function signedRequest(
 }
 
 async function tuya(method, url, body) {
+  if (!PLUG_DEVICE_ID) {
+    throw new Error(
+      "Variable TUYA_PLUG_DEVICE_ID manquante."
+    );
+  }
+
   let token = await getToken();
   let data = await signedRequest(
     method,
