@@ -425,42 +425,44 @@ app.get("/luma/status", async (req, res) => {
 // 🔌 PRISE — téléphone (Palmi-Plug)
 // ============================================================
 
-for (const action of ["on", "off", "status"]) {
+// Relaie TOUTES les routes /plug/... vers palmi-smarthome,
+// avec leurs paramètres (?level=...&key=...)
+app.get(/^\/plug\/.+/, async (req, res) => {
 
-    app.get(`/plug/${action}`, async (req, res) => {
+    try {
 
-        try {
-
-            const response =
-                await fetch(
-                    `${SMARTHOME_URL}/plug/${action}`
-                );
-
-            const data =
-                await response.json();
-
-            return res
-                .status(response.status)
-                .json(data);
-
-        } catch (error) {
-
-            console.error(
-                `Erreur proxy plug/${action} :`,
-                error
+        const response =
+            await fetch(
+                `${SMARTHOME_URL}${req.originalUrl}`
             );
 
-            return res.status(502).json({
-                success: false,
-                error:
-                    "palmi-smarthome injoignable"
-            });
+        const body =
+            await response.text();
 
-        }
+        return res
+            .status(response.status)
+            .type(
+                response.headers.get("content-type") ||
+                "application/json"
+            )
+            .send(body);
 
-    });
+    } catch (error) {
 
-}
+        console.error(
+            "Erreur proxy plug :",
+            error.message
+        );
+
+        return res.status(502).json({
+            success: false,
+            error:
+                "palmi-smarthome injoignable"
+        });
+
+    }
+
+});
 
 
 app.get(
