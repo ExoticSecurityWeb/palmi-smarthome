@@ -421,6 +421,48 @@ app.get("/luma/status", async (req, res) => {
 });
 
 
+// ============================================================
+// 🔌 PRISE — téléphone (Palmi-Plug)
+// ============================================================
+
+for (const action of ["on", "off", "status"]) {
+
+    app.get(`/plug/${action}`, async (req, res) => {
+
+        try {
+
+            const response =
+                await fetch(
+                    `${SMARTHOME_URL}/plug/${action}`
+                );
+
+            const data =
+                await response.json();
+
+            return res
+                .status(response.status)
+                .json(data);
+
+        } catch (error) {
+
+            console.error(
+                `Erreur proxy plug/${action} :`,
+                error
+            );
+
+            return res.status(502).json({
+                success: false,
+                error:
+                    "palmi-smarthome injoignable"
+            });
+
+        }
+
+    });
+
+}
+
+
 app.get(
     "/luma/brightness",
     async (req, res) => {

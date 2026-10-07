@@ -383,6 +383,47 @@ button:active {
 </div>
 </article>
 
+<!-- 🔌 PRISE — TÉLÉPHONE -->
+
+<article class="card">
+
+<div class="card-title">
+    <h2>🔌 Prise</h2>
+    <span class="card-icon">⚡</span>
+</div>
+
+<div class="rows">
+
+<div class="row">
+    <div>
+        <div class="row-title">Chargeur téléphone</div>
+        <div class="row-subtitle" id="plugState">Chargement...</div>
+    </div>
+
+    <button id="plugButton" onclick="togglePlug()">⏻</button>
+</div>
+
+<div class="row">
+    <div>
+        <div class="row-title">Consommation</div>
+        <div class="row-subtitle" id="plugEnergy">--</div>
+    </div>
+
+    <span id="plugPower" class="accent">-- W</span>
+</div>
+
+<div class="row">
+    <div>
+        <div class="row-title">Batterie du téléphone</div>
+        <div class="row-subtitle" id="plugRule">--</div>
+    </div>
+
+    <span id="plugBattery" class="accent">-- %</span>
+</div>
+
+</div>
+</article>
+
 
 <!-- 📺 TV 1 -->
 
@@ -1023,6 +1064,155 @@ async function checkSystemStatus() {
 
 
 /* ============================================================
+   🔌 PRISE — TÉLÉPHONE
+   ============================================================ */
+
+let plugOn = false;
+
+
+async function loadPlugStatus() {
+
+    try {
+
+        const response =
+            await fetch("/plug/status");
+
+        const data =
+            await response.json();
+
+        if (!response.ok || data.success === false) {
+            throw new Error("Prise indisponible");
+        }
+
+        plugOn = data.on === true;
+
+        updatePlug(data);
+
+    } catch (error) {
+
+        console.log(
+            "Erreur chargement prise :",
+            error
+        );
+
+        document.getElementById("plugState")
+            .textContent = "Indisponible";
+    }
+}
+
+
+async function togglePlug() {
+
+    const endpoint =
+        plugOn
+            ? "/plug/off"
+            : "/plug/on";
+
+    try {
+
+        const response =
+            await fetch(endpoint);
+
+        const data =
+            await response.json();
+
+        if (!response.ok || data.success === false) {
+
+            alert(
+                "Impossible de contrôler la prise."
+            );
+
+            return;
+        }
+
+        plugOn = !plugOn;
+
+        loadPlugStatus();
+
+    } catch (error) {
+
+        console.log(
+            "Erreur prise :",
+            error
+        );
+
+        alert(
+            "La prise est indisponible."
+        );
+    }
+}
+
+
+function updatePlug(data) {
+
+    const button =
+        document.getElementById("plugButton");
+
+    const state =
+        document.getElementById("plugState");
+
+    if (plugOn) {
+
+        button.classList.add("button-active");
+        state.textContent = "Allumée";
+
+    } else {
+
+        button.classList.remove("button-active");
+        state.textContent = "Éteinte";
+    }
+
+    document.getElementById("plugPower")
+        .textContent =
+            typeof data.power === "number"
+                ? data.power + " W"
+                : "-- W";
+
+    const extra = [];
+
+    if (typeof data.voltage === "number") {
+        extra.push(data.voltage + " V");
+    }
+
+    if (typeof data.current === "number") {
+        extra.push(data.current + " mA");
+    }
+
+    if (typeof data.energy === "number") {
+        extra.push(data.energy + " kWh");
+    }
+
+    document.getElementById("plugEnergy")
+        .textContent =
+            extra.length
+                ? extra.join(" · ")
+                : "--";
+
+    document.getElementById("plugBattery")
+        .textContent =
+            data.battery
+                ? data.battery.level + " %"
+                : "-- %";
+
+    const s = data.settings;
+
+    document.getElementById("plugRule")
+        .textContent =
+            s
+                ? (
+                    s.autoBattery
+                        ? `Coupe à ${s.batteryOff} %, rallume à ${s.batteryOn} %`
+                        : "Auto batterie désactivée"
+                ) + (
+                    s.nightCutEnabled
+                        ? ` · nuit ${s.nightCutTime}`
+                        : ""
+                )
+                : "--";
+}
+
+
+/* ============================================================
    🚀 DÉMARRAGE
    ============================================================ */
 
@@ -1031,6 +1221,8 @@ loadWeather();
 loadLightStatus();
 
 loadLumaStatus();
+
+loadPlugStatus();
 
 checkSystemStatus();
 
@@ -1045,6 +1237,11 @@ setInterval(
 setInterval(
     loadLumaStatus,
     10000
+);
+
+setInterval(
+    loadPlugStatus,
+    15000
 );
 
 setInterval(

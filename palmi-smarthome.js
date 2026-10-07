@@ -9,6 +9,7 @@ const path = require("path");
 const { WebSocketServer } = require("ws");
 const http = require("http");
 const palmiLuma = require("./Palmi-Luma");
+const palmiPlug = require("./Palmi-Plug");
 
 const app = express();
 app.use(express.json());
@@ -760,12 +761,13 @@ app.get(
 );
 
 app.use("/luma", palmiLuma.router);
+app.use("/plug", palmiPlug.router);
 
 app.get(
   "/",
   (req, res) => {
     res.send(
-      "Palmi Smart Home — routes: /light/on, /light/off, /light/brightness?value=0-100, /light/white?warmth=50&brightness=100, /light/color?hex=RRGGBB, /debug-functions, /luma/on, /luma/off, /luma/brightness?value=0-100, /luma/white?warmth=50&brightness=100, /luma/color?hex=RRGGBB, /luma/debug-functions"
+      "Palmi Smart Home — routes: /light/on, /light/off, /light/brightness?value=0-100, /light/white?warmth=50&brightness=100, /light/color?hex=RRGGBB, /debug-functions, /luma/on, /luma/off, /luma/brightness?value=0-100, /luma/white?warmth=50&brightness=100, /luma/color?hex=RRGGBB, /luma/debug-functions, /plug/on, /plug/off, /plug/status, /plug/battery?level=0-100&key=SECRET, /plug/debug-functions"
     );
   }
 );
@@ -1363,6 +1365,9 @@ async function runDinnerAutomation() {
   // SCHEDULER
   // ==========================================================
 
+  // Prise connectée : notifications Telegram des coupures auto
+  palmiPlug.setNotifier(notifyAll);
+
   const fixedRuns =
     new Set();
 
@@ -1461,6 +1466,8 @@ async function runDinnerAutomation() {
             await runSchoolAutomation();
           }
         }
+
+        await palmiPlug.tick();
 
         await runCustomAutomations(
           currentTime,
@@ -1782,6 +1789,26 @@ async function runDinnerAutomation() {
           await bot.sendMessage(
             chatId,
             "❌ Création de l'automatisation annulée."
+          );
+
+          return;
+        }
+
+        // ======================================================
+        // COMMANDES PRISE (Palmi-Plug) — avant Luma et la LED
+        // ======================================================
+
+        const plugReply =
+          await palmiPlug.handleTelegramCommand(
+            text
+          );
+
+        if (plugReply) {
+          delete automationCreation[chatId];
+
+          await bot.sendMessage(
+            chatId,
+            plugReply
           );
 
           return;
@@ -2639,6 +2666,14 @@ async function runDinnerAutomation() {
               "• monte Luma\n" +
               "• lumière blanche Luma\n" +
               "• couleur Luma rouge/bleu/vert/etc.\n\n" +
+              "🔌 Prise connectée (téléphone) :\n" +
+              "• allume la prise / éteins la prise\n" +
+              "• /prise — état + consommation\n" +
+              "• /seuil 85 — coupe à 85 % de batterie\n" +
+              "• /seuil_on 20 — rallume à 20 %\n" +
+              "• /heure_coupure 03:00 (ou off)\n" +
+              "• /prise_auto on|off\n" +
+              "• /prise_reglages\n\n" +
               "📺 Commandes TV (francais ou anglais) :\n" +
               "• /tv haut / up [nombre]\n" +
               "• /tv bas / down [nombre]\n" +
